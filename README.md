@@ -1,1 +1,1 @@
-# latentpixelsplat
+# LatentPixelSplat
