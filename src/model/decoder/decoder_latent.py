@@ -312,3 +312,49 @@ class ResnetBlock(nn.Module):
                 x = self.nin_shortcut(x)
 
         return x+h
+
+
+
+# From https://github.com/madebyollin/taesd
+class Block(nn.Module):
+    def __init__(self, d_in, d_out):
+        super().__init__()
+        self.conv = nn.Sequential(nn.Conv2d(d_in, d_out, 3, padding=1), 
+                                  nn.ReLU(), 
+                                  nn.Conv2d(d_in, d_out, 3, padding=1), 
+                                  nn.ReLU(), 
+                                  nn.Conv2d(d_in, d_out, 3, padding=1)
+                                  )
+        self.skip = nn.Conv2d(d_in, d_out, 1, bias=False) if d_in != d_out else nn.Identity()
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        return self.relu(self.conv(x) + self.skip(x))
+
+class Clamp(nn.Module):
+    def forward(self, x):
+        return torch.tanh(x / 3) * 3
+
+# Adapted from https://github.com/madebyollin/taesd
+class DecoderLatentTiny(nn.Module):
+    def __init__(self, d_in=4, d_out=3) -> None:
+        super().__init__()
+
+        self.layers = nn.Sequential(
+        Clamp(), nn.Conv2d(d_in, 64, 3, padding=1), nn.ReLU(),
+        Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
+        Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
+        Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
+        Block(64, 64), nn.Conv2d(64, d_out, 3, padding=1),
+        )
+
+    def forward(self, x):
+        # Merge the batch dimensions.
+        # b, v, _, h, w = context["image"].shape
+        # x = rearrange(context["image"], "b v c h w -> (b v) c h w")
+
+        features = self.layers(x)
+        features = features.clamp(0, 1)
+
+        # Separate batch dimensions.
+        return features   # rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
+

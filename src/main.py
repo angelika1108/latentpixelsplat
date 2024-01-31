@@ -29,7 +29,7 @@ with install_import_hook(
     from src.model.decoder import get_decoder
     from src.model.encoder import get_encoder
     from src.model.model_wrapper import ModelWrapper
-    from src.model.decoder.decoder_latent import DecoderLatent
+    from src.model.decoder.decoder_latent import DecoderLatent, DecoderLatentTiny
 
 
 def cyan(text: str) -> str:
@@ -118,6 +118,9 @@ def train(cfg_dict: DictConfig):
     decoder_latent = DecoderLatent(
         **config['model']['params']['ddconfig'], **config['model']['params'])
 
+    decoder_latent = DecoderLatentTiny()
+
+
     model_wrapper = ModelWrapper(
         cfg.optimizer,
         cfg.test,
@@ -127,7 +130,7 @@ def train(cfg_dict: DictConfig):
         get_decoder(cfg.model.decoder, cfg.dataset),
         decoder_latent,
         get_losses(cfg.loss),
-        step_tracker,
+        step_tracker, 
     )
     
     

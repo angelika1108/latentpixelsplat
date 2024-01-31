@@ -1,6 +1,3 @@
-from dataclasses import dataclass
-from typing import Literal
-
 import torch
 import torch.nn.functional as F
 from einops import rearrange
@@ -8,7 +5,6 @@ from jaxtyping import Float
 from torch import Tensor, nn
 
 from ...dataset.types import BatchedViews
-from .backbone.backbone import Backbone
 
 
 # From https://github.com/CompVis/latent-diffusion/
@@ -279,12 +275,6 @@ class ResnetBlock(nn.Module):
     
 
 
-@dataclass
-class BackboneLatentCfg:
-    name: Literal["latent_encoder"]
-    model: Literal["tiny_out4"]
-    d_out: int
-
 # From https://github.com/madebyollin/taesd
 class Block(nn.Module):
     def __init__(self, d_in, d_out):
@@ -301,34 +291,30 @@ class Block(nn.Module):
         return self.relu(self.conv(x) + self.skip(x))
 
 # Adapted from https://github.com/madebyollin/taesd
-class BackboneLatentTinyOut4(Backbone[BackboneLatentCfg]):
-    def __init__(self, cfg: BackboneLatentCfg, d_in: int) -> None:
-        super().__init__(cfg)
+class EncoderLatentTiny(nn.Module):
+    def __init__(self, d_in=3, d_out=4) -> None:
+        super().__init__()
         assert d_in == 3
 
         self.layers = nn.Sequential(
         nn.Conv2d(d_in, 64, 3, padding=1), Block(64, 64),
         nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
         nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
-        nn.Conv2d(64, cfg.d_out, 3, padding=1),
+        nn.Conv2d(64, d_out, 3, padding=1),
         )
     
-    def forward(
-        self,
-        context: BatchedViews,
-    ) -> Float[Tensor, "batch view d_out height width"]:
+    def forward(self, x):
         # Merge the batch dimensions.
-        b, v, _, h, w = context["image"].shape
-        x = rearrange(context["image"], "b v c h w -> (b v) c h w")
+        # b, v, _, h, w = context["image"].shape
+        # x = rearrange(context["image"], "b v c h w -> (b v) c h w")
 
-        # Run Latent Encoder
         features = self.layers(x)
         # # Scale image from [-1, 1] to [0, 1] to match TAESD convention
         # features = self.layers(x.add(1).div(2))
 
         # Separate batch dimensions.
-        return rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
+        return features # rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
 
-    @property
-    def d_out(self) -> int:
-        return self.cfg.d_out
+
+
+

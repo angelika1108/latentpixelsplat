@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Protocol, runtime_checkable
+import time
 
 import moviepy.editor as mpy
 import torch
@@ -38,7 +39,7 @@ from ..visualization.validation_in_3d import render_cameras, render_projections
 from .decoder.decoder import Decoder, DepthRenderingMode
 from .encoder import Encoder
 from .encoder.visualization.encoder_visualizer import EncoderVisualizer
-from .decoder.decoder_latent import DecoderLatent
+from .decoder.decoder_latent import DecoderLatent, DecoderLatentTiny
 
 
 @dataclass
@@ -90,9 +91,9 @@ class ModelWrapper(LightningModule):
         encoder: Encoder,
         encoder_visualizer: Optional[EncoderVisualizer],
         decoder: Decoder,
-        decoder_latent: DecoderLatent,
+        decoder_latent: DecoderLatentTiny, # DecoderLatent or DecoderLatentTiny
         losses: list[Loss],
-        step_tracker: StepTracker | None,
+        step_tracker: StepTracker | None, 
     ) -> None:
         super().__init__()
         self.optimizer_cfg = optimizer_cfg
@@ -176,6 +177,8 @@ class ModelWrapper(LightningModule):
         if batch_idx % 100 == 0:
             print(f"Test step {batch_idx:0>6}.")
 
+        t0 = time.time()
+
         # Render Gaussians.
         with self.benchmarker.time("encoder"):
             gaussians = self.encoder(
@@ -184,8 +187,10 @@ class ModelWrapper(LightningModule):
                 deterministic=False,
             )
         
+        t_encoder = time.time() - t0
+        t0 = time.time()
+
         h_new, w_new = h // 4, w // 4  #############################################################
-        h_new, w_new = h, w
 
         with self.benchmarker.time("decoder", num_calls=v):
             output = self.decoder.forward(
@@ -197,12 +202,28 @@ class ModelWrapper(LightningModule):
                 (h_new, w_new),
             )
         
+        
+        t_splatting = time.time() - t0
+        t0 = time.time()
+
         # Latent decoder
         b, v, _, _, _ = output.color.shape
         output.color = rearrange(output.color, "b v c h w -> (b v) c h w")
-        # output.color = F.interpolate(output.color, size=(h, w), mode="bilinear", align_corners=False)
-        # output.color = self.decoder_latent.forward(output.color)
+
+        if isinstance(self.decoder_latent, DecoderLatent):    # Input channels: 3, output channels: 3
+            output.color = self.decoder_latent.forward(output.color)
+            # output.color = F.interpolate(output.color, size=(h, w), mode="bilinear", align_corners=False)
+            output.color = (output.color - output.color.min()) / (output.color.max() - output.color.min())
+        elif isinstance(self.decoder_latent, DecoderLatentTiny):    # Input channels: 4, output channels: 3
+            output.color = torch.cat((output.color, output.color[:, -1:, :, :]), dim=1)
+            output.color = self.decoder_latent.forward(output.color)
+        else:
+            raise ValueError("Unknown latent decoder type")
+        
+
+        t_latent_decoder = time.time() - t0
         # breakpoint()
+
         output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
 
 
@@ -253,10 +274,10 @@ class ModelWrapper(LightningModule):
         
         # Latent decoder
         b, v, _, _, _ = output_probabilistic.color.shape
-
         output_probabilistic.color = rearrange(output_probabilistic.color, "b v c h w -> (b v) c h w")
         output_probabilistic.color = self.decoder_latent.forward(output_probabilistic.color)
         output_probabilistic.color = rearrange(output_probabilistic.color, "(b v) c h w -> b v c h w", b=b, v=v)
+
 
         rgb_probabilistic = output_probabilistic.color[0]
 
@@ -276,10 +297,10 @@ class ModelWrapper(LightningModule):
 
         # Latent decoder
         b, v, _, _, _ = output_deterministic.color.shape
-
         output_deterministic.color = rearrange(output_deterministic.color, "b v c h w -> (b v) c h w")
         output_deterministic.color = self.decoder_latent.forward(output_deterministic.color)
         output_deterministic.color = rearrange(output_deterministic.color, "(b v) c h w -> b v c h w", b=b, v=v)
+
 
         rgb_deterministic = output_deterministic.color[0]
 
