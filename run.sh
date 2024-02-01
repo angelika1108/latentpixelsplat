@@ -1,5 +1,5 @@
 
-# Run PixelSplat on ACID
+# Test PixelSplat on ACID with pre-trained weights
 python3 -m src.main +experiment=acid mode=test dataset/view_sampler=evaluation checkpointing.load=pretrained_models/acid.ckpt dataset.view_sampler.index_path=assets/evaluation_index_acid.json
 
 # python3 -m src.main \
@@ -10,13 +10,13 @@ python3 -m src.main +experiment=acid mode=test dataset/view_sampler=evaluation c
 # dataset.view_sampler.index_path=assets/evaluation_index_acid.json
 
 
-# Test on ACID with latent decoder
+# Test on ACID with latent decoder with pre-trained weights
 python3 -m src.main +experiment=acid mode=test dataset/view_sampler=evaluation checkpointing.load=pretrained_models/acid_latent_dec_d3_f4_noattn.ckpt dataset.view_sampler.index_path=assets/evaluation_index_acid.json
 
-# Test on ACID with latent encoder and decoder
+# Test on ACID with latent encoder and decoder with pre-trained weights
 python3 -m src.main +experiment=acid mode=test dataset/view_sampler=evaluation checkpointing.load=pretrained_models/acid_latent_d3_f4_noattn.ckpt dataset.view_sampler.index_path=assets/evaluation_index_acid.json
 
-# Test test without checkpoint
+# Test without checkpoint
 python3 -m src.main +experiment=acid mode=test dataset/view_sampler=evaluation dataset.view_sampler.index_path=assets/evaluation_index_acid.json
 
 

@@ -12,7 +12,6 @@ from pytorch_lightning import LightningModule
 from pytorch_lightning.loggers.wandb import WandbLogger
 from pytorch_lightning.utilities import rank_zero_only
 from torch import Tensor, nn, optim
-from torch.profiler import profile, record_function, ProfilerActivity
 from torch.nn import functional as F
 
 from ..dataset.data_module import get_data_shim
@@ -91,7 +90,7 @@ class ModelWrapper(LightningModule):
         encoder: Encoder,
         encoder_visualizer: Optional[EncoderVisualizer],
         decoder: Decoder,
-        decoder_latent: DecoderLatentTiny, # DecoderLatent or DecoderLatentTiny
+        decoder_latent: nn.Module,
         losses: list[Loss],
         step_tracker: StepTracker | None, 
     ) -> None:
@@ -177,6 +176,7 @@ class ModelWrapper(LightningModule):
         if batch_idx % 100 == 0:
             print(f"Test step {batch_idx:0>6}.")
 
+        torch.cuda.synchronize()
         t0 = time.time()
 
         # Render Gaussians.
@@ -187,8 +187,10 @@ class ModelWrapper(LightningModule):
                 deterministic=False,
             )
         
+        torch.cuda.synchronize()
         t_encoder = time.time() - t0
-        t0 = time.time()
+        torch.cuda.synchronize()
+        t0 = time.time() 
 
         h_new, w_new = h // 4, w // 4  #############################################################
 
@@ -201,10 +203,11 @@ class ModelWrapper(LightningModule):
                 batch["target"]["far"],
                 (h_new, w_new),
             )
-        
-        
+                
+        torch.cuda.synchronize()
         t_splatting = time.time() - t0
-        t0 = time.time()
+        torch.cuda.synchronize()
+        t0 = time.time() 
 
         # Latent decoder
         b, v, _, _, _ = output.color.shape
@@ -221,11 +224,13 @@ class ModelWrapper(LightningModule):
             raise ValueError("Unknown latent decoder type")
         
 
-        t_latent_decoder = time.time() - t0
-        # breakpoint()
+        torch.cuda.synchronize()
+        t_decoder_latent = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time() 
+        breakpoint()
 
         output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
-
 
         # Save images.
         (scene,) = batch["scene"]

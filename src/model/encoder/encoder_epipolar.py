@@ -6,8 +6,6 @@ import torch
 from einops import rearrange
 from jaxtyping import Float
 from torch import Tensor, nn
-from torch.profiler import profile, record_function, ProfilerActivity
-from lightning.pytorch.profilers import SimpleProfiler, PassThroughProfiler
 from torch.nn import functional as F
 import yaml
 
@@ -69,21 +67,13 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             nn.Linear(self.backbone.d_out, cfg.d_feature),
         )
         
-        ########################################################################################
-
-        # self.profiler = PassThroughProfiler(dirpath="/home/angelika/pixelsplat/chrome_traces", 
-        #                                     filename="profile_encoder.txt")
-        self.profiler = SimpleProfiler(dirpath="/home/angelika/pixelsplat/chrome_traces", 
-                                            filename="profile_encoder.txt")
-
-        ########################################################################################
-
+        
         config_path = "/home/angelika/vae/configs/config_vq-f4-noattn.yaml"
         with open(config_path, 'r') as file:
             config = yaml.safe_load(file)
         self.encoder_latent = EncoderLatent(**config['model']['params']['ddconfig'], **config['model']['params'])
 
-        self.encoder_latent = EncoderLatentTiny()
+        # self.encoder_latent = EncoderLatentTiny()
 
 
         if cfg.use_epipolar_transformer:
@@ -141,127 +131,156 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         deterministic: bool = False,
         visualization_dump: Optional[dict] = None,
     ) -> Gaussians:
+        
+        torch.cuda.synchronize()
+        t0 = time.time()
+
         device = context["image"].device
         b, v, _, h, w = context["image"].shape        
-        
-        with self.profiler.profile("encoder"):
-        # with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], 
-                    #  with_stack=True, 
-                    #  profile_memory=True, 
-                    #  record_shapes=True) as prof_encoder:
-            
-            # with record_function("enc_backbone"):
-            
-            t0 = time.time()        
 
-            # Encode the context images.
-            features = self.backbone(context)
-            features = rearrange(features, "b v c h w -> b v h w c")
-            features = self.backbone_projection(features)
-            features = rearrange(features, "b v h w c -> b v c h w")
+        # Encode the context images.
+        features = self.backbone(context)
+        features = rearrange(features, "b v c h w -> b v h w c")
+        features = self.backbone_projection(features)
+        features = rearrange(features, "b v h w c -> b v c h w")
 
-            t_backbone = time.time() - t0
-            t0 = time.time() 
+        torch.cuda.synchronize()
+        t_backbone = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time() 
 
-            # with record_function("enc_epipolar_transformer"):
-
-            # Run the epipolar transformer.
-            if self.cfg.use_epipolar_transformer:
-                features, sampling = self.epipolar_transformer(
-                    features,
-                    context["extrinsics"],
-                    context["intrinsics"],
-                    context["near"],
-                    context["far"],
-                )
-
-            t_epipolar_transformer = time.time() - t0
-            t0 = time.time()
-
-            features = rearrange(features, "b v c h w -> (b v) c h w")
-            features = F.interpolate(features, size=(h//4, w//4), mode="bilinear", align_corners=False)
-            # features = F.avg_pool2d(features, kernel_size=4, stride=4)
-            features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
-
-            # # Add the high-resolution skip connection.
-            # skip = rearrange(context["image"], "b v c h w -> (b v) c h w")
-            # skip = self.high_resolution_skip(skip)
-            # features = features + rearrange(skip, "(b v) c h w -> b v c h w", b=b, v=v)
-
-            ############################################################################
-                
-            # with record_function("enc_latent"):
-
-            # Add latent skip connection.
-            skip = rearrange(context["image"], "b v c h w -> (b v) c h w")
-
-            if isinstance(self.encoder_latent, EncoderLatent):    # Input channels: 3, output channels: 3
-                skip = self.encoder_latent(skip)
-                skip = F.interpolate(skip, size=(h//4, w//4), mode="bilinear", align_corners=False)
-            elif isinstance(self.encoder_latent, EncoderLatentTiny):    # Input channels: 3, output channels: 4
-                skip = self.encoder_latent(skip)
-                skip = skip[:, :-1, :, :]
-            else:
-                raise ValueError("Unknown latent encoder type")
-
-            t_latent_encoder = time.time() - t0
-            t0 = time.time()
-            
-            skip = self.high_resolution_skip(skip)
-            features = features + rearrange(skip, "(b v) c h w -> b v c h w", b=b, v=v)
-            
-            # # Max pool for debug ##############################################
-            # features = rearrange(features, "b v c h w -> (b v) c h w")
-            # features = F.max_pool2d(features, kernel_size=4, stride=4)
-            # features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
-
-
-            # with record_function("enc_sample_depths"):
-
-            # Sample depths from the resulting features.
-            features = rearrange(features, "b v c h w -> b v (h w) c")
-            depths, densities = self.depth_predictor.forward(
+        # Run the epipolar transformer.
+        if self.cfg.use_epipolar_transformer:
+            features, sampling = self.epipolar_transformer(
                 features,
+                context["extrinsics"],
+                context["intrinsics"],
                 context["near"],
                 context["far"],
-                deterministic,
-                1 if deterministic else self.cfg.gaussians_per_pixel,
-            )
-
-            # with record_function("enc_gaussian_adapter"):
-
-            # Convert the features and depths into Gaussians.
-            h_down = h // 4   ######################################################################
-            w_down = w // 4
-            
-            xy_ray, _ = sample_image_grid((h_down, w_down), device)
-            xy_ray = rearrange(xy_ray, "h w xy -> (h w) () xy")            
-            gaussians = rearrange(
-                self.to_gaussians(features),
-                "... (srf c) -> ... srf c",
-                srf=self.cfg.num_surfaces,
-            )
-            offset_xy = gaussians[..., :2].sigmoid()
-            pixel_size = 1 / torch.tensor((w_down, h_down), dtype=torch.float32, device=device)
-
-            xy_ray = xy_ray + (offset_xy - 0.5) * pixel_size
-            gpp = self.cfg.gaussians_per_pixel
-        
-            gaussians = self.gaussian_adapter.forward(
-                rearrange(context["extrinsics"], "b v i j -> b v () () () i j"),
-                rearrange(context["intrinsics"], "b v i j -> b v () () () i j"),
-                rearrange(xy_ray, "b v r srf xy -> b v r srf () xy"),
-                depths,
-                self.map_pdf_to_opacity(densities, global_step) / gpp,
-                rearrange(gaussians[..., 2:], "b v r srf c -> b v r srf () c"),
-                (h_down, w_down),
             )
         
-            t_gaussian_adapter = time.time() - t0
-            # breakpoint()
+        torch.cuda.synchronize()
+        t_epipolar_transformer = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
 
-        # prof_encoder.export_chrome_trace("chrome_traces/trace_encoder.json")
-        # print(prof_encoder.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=30))
+        features = rearrange(features, "b v c h w -> (b v) c h w")
+        features = F.interpolate(features, size=(h//4, w//4), mode="bilinear", align_corners=False)
+        # features = F.avg_pool2d(features, kernel_size=4, stride=4)
+        features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
+
+        # # Add the high-resolution skip connection.
+        # skip = rearrange(context["image"], "b v c h w -> (b v) c h w")
+        # skip = self.high_resolution_skip(skip)
+        # features = features + rearrange(skip, "(b v) c h w -> b v c h w", b=b, v=v)
+
+        ############################################################################
+        
+
+        # Add latent skip connection.
+        skip = rearrange(context["image"], "b v c h w -> (b v) c h w")
+
+        if isinstance(self.encoder_latent, EncoderLatent):    # Input channels: 3, output channels: 3
+            skip = self.encoder_latent(skip)
+            skip = F.interpolate(skip, size=(h//4, w//4), mode="bilinear", align_corners=False)
+        elif isinstance(self.encoder_latent, EncoderLatentTiny):    # Input channels: 3, output channels: 4
+            skip = self.encoder_latent(skip)
+            skip = skip[:, :-1, :, :]
+        else:
+            raise ValueError("Unknown latent encoder type")
+
+        torch.cuda.synchronize()
+        t_latent_encoder = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
+        
+        skip = self.high_resolution_skip(skip)
+        features = features + rearrange(skip, "(b v) c h w -> b v c h w", b=b, v=v)
+        
+        # # Max pool for debug ##############################################
+        # features = rearrange(features, "b v c h w -> (b v) c h w")
+        # features = F.max_pool2d(features, kernel_size=4, stride=4)
+        # features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
+
+
+        # Sample depths from the resulting features.
+        features = rearrange(features, "b v c h w -> b v (h w) c")
+        depths, densities = self.depth_predictor.forward(
+            features,
+            context["near"],
+            context["far"],
+            deterministic,
+            1 if deterministic else self.cfg.gaussians_per_pixel,
+        )
+
+        torch.cuda.synchronize()
+        t_depth = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
+
+
+        # Convert the features and depths into Gaussians.
+        h_down = h // 4   ######################################################################
+        w_down = w // 4
+        
+        xy_ray, _ = sample_image_grid((h_down, w_down), device)
+
+        torch.cuda.synchronize()
+        t_sample_image_grid = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
+
+        xy_ray = rearrange(xy_ray, "h w xy -> (h w) () xy")            
+        gaussians = rearrange(
+            self.to_gaussians(features),
+            "... (srf c) -> ... srf c",
+            srf=self.cfg.num_surfaces,
+        )
+
+        torch.cuda.synchronize()
+        t_to_gaussians = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
+
+        offset_xy = gaussians[..., :2].sigmoid()
+        torch.cuda.synchronize()
+        t_offset_xy = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
+
+        size = torch.tensor((w_down, h_down), dtype=torch.float32, device=device)
+        torch.cuda.synchronize()
+        t_size = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
+
+        pixel_size = 1 / size
+        torch.cuda.synchronize()
+        t_pixel_size = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
+
+        xy_ray = xy_ray + (offset_xy - 0.5) * pixel_size
+        gpp = self.cfg.gaussians_per_pixel
+
+        torch.cuda.synchronize()
+        t_xy_ray = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
+
+        gaussians = self.gaussian_adapter.forward(
+            rearrange(context["extrinsics"], "b v i j -> b v () () () i j"),
+            rearrange(context["intrinsics"], "b v i j -> b v () () () i j"),
+            rearrange(xy_ray, "b v r srf xy -> b v r srf () xy"),
+            depths,
+            self.map_pdf_to_opacity(densities, global_step) / gpp,
+            rearrange(gaussians[..., 2:], "b v r srf c -> b v r srf () c"),
+            (h_down, w_down),
+        )
+        torch.cuda.synchronize()
+        t_gaussian_adapter = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
 
         # Dump visualizations if needed.
         if visualization_dump is not None:
@@ -283,6 +302,9 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             if self.cfg.predict_opacity
             else 1
         )
+
+        t_vis = time.time() - t0
+        breakpoint()
 
         return Gaussians(
             rearrange(

@@ -11,7 +11,6 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers.wandb import WandbLogger
-from lightning.pytorch.profilers import SimpleProfiler, PassThroughProfiler
 
 
 # Configure beartype and jaxtyping.
@@ -91,8 +90,6 @@ def train(cfg_dict: DictConfig):
     step_tracker = StepTracker()
 
 
-    # profiler = SimpleProfiler()
-
     trainer = Trainer(
         max_epochs=-1,
         accelerator="gpu",
@@ -118,7 +115,7 @@ def train(cfg_dict: DictConfig):
     decoder_latent = DecoderLatent(
         **config['model']['params']['ddconfig'], **config['model']['params'])
 
-    decoder_latent = DecoderLatentTiny()
+    # decoder_latent = DecoderLatentTiny()
 
 
     model_wrapper = ModelWrapper(

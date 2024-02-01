@@ -1,7 +1,6 @@
 import torch
 from einops import rearrange
 import torch.nn as nn
-from torch.profiler import profile, record_function, ProfilerActivity
 import numpy as np
 from einops import rearrange
 from taming.modules.vqvae.quantize import VectorQuantizer2 as VectorQuantizer
@@ -91,45 +90,39 @@ class DecoderLatent(nn.Module):
         assert z.shape[1:] == self.z_shape[1:]
         self.last_z_shape = z.shape
 
-        # Pytorch profiler
-        with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], profile_memory=True, record_shapes=True) as prof_decoder_latent:
-            with record_function("dec_latent"):
+        if self.force_quantize:
+            z, _, _ = self.quantize(z)
+        else:
+            z = z
 
-                if self.force_quantize:
-                    z, _, _ = self.quantize(z)
-                else:
-                    z = z
+        z = self.post_quant_conv(z)
 
-                z = self.post_quant_conv(z)
+        # z to block_in
+        h = self.conv_in(z)
 
-                # z to block_in
-                h = self.conv_in(z)
+        # middle
+        h = self.mid.block_1(h)
+        h = self.mid.attn_1(h)
+        h = self.mid.block_2(h)
 
-                # middle
-                h = self.mid.block_1(h)
-                h = self.mid.attn_1(h)
-                h = self.mid.block_2(h)
+        # upsampling
+        for i_level in reversed(range(self.num_resolutions)):
+            for i_block in range(self.num_res_blocks+1):
+                h = self.up[i_level].block[i_block](h)
+                if len(self.up[i_level].attn) > 0:
+                    h = self.up[i_level].attn[i_block](h)
+            if i_level != 0:
+                h = self.up[i_level].upsample(h)
 
-                # upsampling
-                for i_level in reversed(range(self.num_resolutions)):
-                    for i_block in range(self.num_res_blocks+1):
-                        h = self.up[i_level].block[i_block](h)
-                        if len(self.up[i_level].attn) > 0:
-                            h = self.up[i_level].attn[i_block](h)
-                    if i_level != 0:
-                        h = self.up[i_level].upsample(h)
+        # end
+        if self.give_pre_end:
+            return h
 
-                # end
-                if self.give_pre_end:
-                    return h
-
-                h = self.norm_out(h)
-                h = nonlinearity(h)
-                h = self.conv_out(h)
-                if self.tanh_out:
-                    h = torch.tanh(h)
-
-        prof_decoder_latent.export_chrome_trace("chrome_traces/trace_decoder_latent.json")
+        h = self.norm_out(h)
+        h = nonlinearity(h)
+        h = self.conv_out(h)
+        if self.tanh_out:
+            h = torch.tanh(h)
 
         return h
 

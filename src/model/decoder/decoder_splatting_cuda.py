@@ -5,7 +5,6 @@ import torch
 from einops import rearrange, repeat
 from jaxtyping import Float
 from torch import Tensor
-from torch.profiler import profile, record_function, ProfilerActivity
 
 from ...dataset import DatasetCfg
 from ..types import Gaussians
@@ -43,35 +42,27 @@ class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
         image_shape: tuple[int, int],
         depth_mode: DepthRenderingMode | None = None,
     ) -> DecoderOutput:
-        b, v, _, _ = extrinsics.shape
+        b, v, _, _ = extrinsics.shape       
 
-        # Pytorch profiler
-        with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], profile_memory=True, record_shapes=True) as prof_decoder:
-            with record_function("dec_render_color"):
+        color = render_cuda(
+            rearrange(extrinsics, "b v i j -> (b v) i j"),
+            rearrange(intrinsics, "b v i j -> (b v) i j"),
+            rearrange(near, "b v -> (b v)"),
+            rearrange(far, "b v -> (b v)"),
+            image_shape,
+            repeat(self.background_color, "c -> (b v) c", b=b, v=v),
+            repeat(gaussians.means, "b g xyz -> (b v) g xyz", v=v),
+            repeat(gaussians.covariances, "b g i j -> (b v) g i j", v=v),
+            repeat(gaussians.harmonics, "b g c d_sh -> (b v) g c d_sh", v=v),
+            repeat(gaussians.opacities, "b g -> (b v) g", v=v),
+        )
+        color = rearrange(color, "(b v) c h w -> b v c h w", b=b, v=v)
 
-                color = render_cuda(
-                    rearrange(extrinsics, "b v i j -> (b v) i j"),
-                    rearrange(intrinsics, "b v i j -> (b v) i j"),
-                    rearrange(near, "b v -> (b v)"),
-                    rearrange(far, "b v -> (b v)"),
-                    image_shape,
-                    repeat(self.background_color, "c -> (b v) c", b=b, v=v),
-                    repeat(gaussians.means, "b g xyz -> (b v) g xyz", v=v),
-                    repeat(gaussians.covariances, "b g i j -> (b v) g i j", v=v),
-                    repeat(gaussians.harmonics, "b g c d_sh -> (b v) g c d_sh", v=v),
-                    repeat(gaussians.opacities, "b g -> (b v) g", v=v),
-                )
-                color = rearrange(color, "(b v) c h w -> b v c h w", b=b, v=v)
+        if depth_mode is not None:
+            depth = self.render_depth(
+                gaussians, extrinsics, intrinsics, near, far, image_shape, depth_mode
+            )
         
-            if depth_mode is not None:
-                with record_function("dec_render_depth"):
-
-                    depth = self.render_depth(
-                        gaussians, extrinsics, intrinsics, near, far, image_shape, depth_mode
-                    )
-            
-        prof_decoder.export_chrome_trace("chrome_traces/trace_decoder_render.json")
-
         return DecoderOutput(
             color,
             None if depth_mode is None else depth,
