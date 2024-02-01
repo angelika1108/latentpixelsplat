@@ -159,15 +159,16 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 context["far"],
             )
         
-        torch.cuda.synchronize()
-        t_epipolar_transformer = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
-
         features = rearrange(features, "b v c h w -> (b v) c h w")
         features = F.interpolate(features, size=(h//4, w//4), mode="bilinear", align_corners=False)
         # features = F.avg_pool2d(features, kernel_size=4, stride=4)
         features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
+
+
+        torch.cuda.synchronize()
+        t_epipolar_transformer = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
 
         # # Add the high-resolution skip connection.
         # skip = rearrange(context["image"], "b v c h w -> (b v) c h w")
@@ -176,7 +177,6 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
 
         ############################################################################
         
-
         # Add latent skip connection.
         skip = rearrange(context["image"], "b v c h w -> (b v) c h w")
 
@@ -189,13 +189,15 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         else:
             raise ValueError("Unknown latent encoder type")
 
+
+        skip = self.high_resolution_skip(skip)
+        features = features + rearrange(skip, "(b v) c h w -> b v c h w", b=b, v=v)
+
         torch.cuda.synchronize()
         t_latent_encoder = time.time() - t0
         torch.cuda.synchronize()
         t0 = time.time()
         
-        skip = self.high_resolution_skip(skip)
-        features = features + rearrange(skip, "(b v) c h w -> b v c h w", b=b, v=v)
         
         # # Max pool for debug ##############################################
         # features = rearrange(features, "b v c h w -> (b v) c h w")
@@ -224,12 +226,6 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         w_down = w // 4
         
         xy_ray, _ = sample_image_grid((h_down, w_down), device)
-
-        torch.cuda.synchronize()
-        t_sample_image_grid = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
-
         xy_ray = rearrange(xy_ray, "h w xy -> (h w) () xy")            
         gaussians = rearrange(
             self.to_gaussians(features),
@@ -237,36 +233,10 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             srf=self.cfg.num_surfaces,
         )
 
-        torch.cuda.synchronize()
-        t_to_gaussians = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
-
         offset_xy = gaussians[..., :2].sigmoid()
-        torch.cuda.synchronize()
-        t_offset_xy = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
-
-        size = torch.tensor((w_down, h_down), dtype=torch.float32, device=device)
-        torch.cuda.synchronize()
-        t_size = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
-
-        pixel_size = 1 / size
-        torch.cuda.synchronize()
-        t_pixel_size = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
-
+        pixel_size = 1 / torch.tensor((w_down, h_down), dtype=torch.float32, device=device)
         xy_ray = xy_ray + (offset_xy - 0.5) * pixel_size
         gpp = self.cfg.gaussians_per_pixel
-
-        torch.cuda.synchronize()
-        t_xy_ray = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
 
         gaussians = self.gaussian_adapter.forward(
             rearrange(context["extrinsics"], "b v i j -> b v () () () i j"),
@@ -277,6 +247,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             rearrange(gaussians[..., 2:], "b v r srf c -> b v r srf () c"),
             (h_down, w_down),
         )
+
         torch.cuda.synchronize()
         t_gaussian_adapter = time.time() - t0
         torch.cuda.synchronize()
