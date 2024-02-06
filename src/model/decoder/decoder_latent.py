@@ -1,7 +1,7 @@
 import torch
-from einops import rearrange
 import torch.nn as nn
 import numpy as np
+import time
 from einops import rearrange
 from taming.modules.vqvae.quantize import VectorQuantizer2 as VectorQuantizer
 
@@ -90,10 +90,18 @@ class DecoderLatent(nn.Module):
         assert z.shape[1:] == self.z_shape[1:]
         self.last_z_shape = z.shape
 
+        torch.cuda.synchronize()
+        t0 = time.time()
+
         if self.force_quantize:
             z, _, _ = self.quantize(z)
         else:
             z = z
+
+        torch.cuda.synchronize()
+        t_quantize = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
 
         z = self.post_quant_conv(z)
 
@@ -105,6 +113,11 @@ class DecoderLatent(nn.Module):
         h = self.mid.attn_1(h)
         h = self.mid.block_2(h)
 
+        torch.cuda.synchronize()
+        t_middle = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
+
         # upsampling
         for i_level in reversed(range(self.num_resolutions)):
             for i_block in range(self.num_res_blocks+1):
@@ -113,6 +126,11 @@ class DecoderLatent(nn.Module):
                     h = self.up[i_level].attn[i_block](h)
             if i_level != 0:
                 h = self.up[i_level].upsample(h)
+        
+        torch.cuda.synchronize()
+        t_upsample = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
 
         # end
         if self.give_pre_end:
@@ -123,6 +141,12 @@ class DecoderLatent(nn.Module):
         h = self.conv_out(h)
         if self.tanh_out:
             h = torch.tanh(h)
+        
+        torch.cuda.synchronize()
+        t_end = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
+        # breakpoint() # 29 layers   7+22
 
         return h
 
@@ -336,7 +360,6 @@ class DecoderLatentTiny(nn.Module):
         Clamp(), nn.Conv2d(d_in, 64, 3, padding=1), nn.ReLU(),
         Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
         Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
-        Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
         Block(64, 64), nn.Conv2d(64, d_out, 3, padding=1),
         )
 
@@ -347,7 +370,7 @@ class DecoderLatentTiny(nn.Module):
 
         features = self.layers(x)
         features = features.clamp(0, 1)
+        # breakpoint()
 
-        # Separate batch dimensions.
-        return features   # rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
+        return features # if separate batch dimensions: rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
 

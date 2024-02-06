@@ -217,20 +217,23 @@ class ModelWrapper(LightningModule):
             output.color = self.decoder_latent.forward(output.color)
             # output.color = F.interpolate(output.color, size=(h, w), mode="bilinear", align_corners=False)
             output.color = (output.color - output.color.min()) / (output.color.max() - output.color.min())
+            output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
+
         elif isinstance(self.decoder_latent, DecoderLatentTiny):    # Input channels: 4, output channels: 3
             output.color = torch.cat((output.color, output.color[:, -1:, :, :]), dim=1)
             output.color = self.decoder_latent.forward(output.color)
+            output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
+        
         else:
-            raise ValueError("Unknown latent decoder type")
+            output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
         
 
         torch.cuda.synchronize()
         t_decoder_latent = time.time() - t0
         torch.cuda.synchronize()
-        t0 = time.time() 
-        breakpoint()
-
-        output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
+        t0 = time.time()
+        
+        # breakpoint()
 
         # Save images.
         (scene,) = batch["scene"]

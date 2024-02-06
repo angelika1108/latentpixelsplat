@@ -1,0 +1,6 @@
+name: latent_encoder
+
+model: tiny
+d_in: 3
+d_out: 3  # 3, 4
+downsample: 4  # 4, 8

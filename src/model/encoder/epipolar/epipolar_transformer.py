@@ -4,7 +4,9 @@ from typing import Optional
 
 from einops import rearrange
 from jaxtyping import Float
+import torch
 from torch import Tensor, nn
+import time
 
 from ....geometry.epipolar_lines import get_depth
 from ....global_cfg import get_cfg
@@ -83,16 +85,29 @@ class EpipolarTransformer(nn.Module):
     ) -> tuple[Float[Tensor, "batch view channel height width"], EpipolarSampling,]:
         b, v, _, h, w = features.shape
 
+        torch.cuda.synchronize()
+        t0 = time.time()
+
         # If needed, apply downscaling.
         if self.downscaler is not None:
             features = rearrange(features, "b v c h w -> (b v) c h w")
             features = self.downscaler(features)
             features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
 
+        torch.cuda.synchronize()
+        t_downscaler = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
+
         # Get the samples used for epipolar attention.
         sampling = self.epipolar_sampler.forward(
             features, extrinsics, intrinsics, near, far
         )
+
+        torch.cuda.synchronize()
+        t_epipolar_sampler = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
 
         if self.cfg.num_octaves > 0:
             # Compute positionally encoded depths for the features.
@@ -119,6 +134,11 @@ class EpipolarTransformer(nn.Module):
         else:
             q = sampling.features
 
+        torch.cuda.synchronize()
+        t_depths = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
+
         # Run the transformer.
         kv = rearrange(features, "b v c h w -> (b v h w) () c")
         features = self.transformer.forward(
@@ -138,12 +158,23 @@ class EpipolarTransformer(nn.Module):
             w=w // self.cfg.downscale,
         )
 
+        torch.cuda.synchronize()
+        t_transformer = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
+
         # If needed, apply upscaling.
         if self.upscaler is not None:
             features = rearrange(features, "b v c h w -> (b v) c h w")
             features = self.upscaler(features)
             features = self.upscale_refinement(features) + features
             features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
+
+        torch.cuda.synchronize()
+        t_upscaler = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
+        # breakpoint()
 
         return features, sampling
 

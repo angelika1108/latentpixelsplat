@@ -25,6 +25,7 @@ class GaussianAdapterCfg:
     gaussian_scale_min: float
     gaussian_scale_max: float
     sh_degree: int
+    use_sh: bool
 
 
 class GaussianAdapter(nn.Module):
@@ -33,6 +34,11 @@ class GaussianAdapter(nn.Module):
     def __init__(self, cfg: GaussianAdapterCfg):
         super().__init__()
         self.cfg = cfg
+
+        if cfg.use_sh:
+            self.d_sh = (cfg.sh_degree + 1) ** 2
+        else:
+            self.d_sh = 1
 
         # Create a mask for the spherical harmonics coefficients. This ensures that at
         # initialization, the coefficients are biased towards having a large DC
@@ -108,9 +114,9 @@ class GaussianAdapter(nn.Module):
         )
         return xy_multipliers.sum(dim=-1)
 
-    @property
-    def d_sh(self) -> int:
-        return (self.cfg.sh_degree + 1) ** 2
+    # @property
+    # def d_sh(self) -> int:
+    #     return (self.cfg.sh_degree + 1) ** 2
 
     @property
     def d_in(self) -> int:

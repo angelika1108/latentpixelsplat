@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Literal, Optional
-import time 
+import time
 
 import torch
 from einops import rearrange
@@ -21,6 +21,7 @@ from .epipolar.depth_predictor_monocular import DepthPredictorMonocular
 from .epipolar.epipolar_transformer import EpipolarTransformer, EpipolarTransformerCfg
 from .visualization.encoder_visualizer_epipolar_cfg import EncoderVisualizerEpipolarCfg
 from .encoder_latent import EncoderLatent, EncoderLatentTiny
+
 
 @dataclass
 class OpacityMappingCfg:
@@ -66,15 +67,33 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             nn.ReLU(),
             nn.Linear(self.backbone.d_out, cfg.d_feature),
         )
-        
-        
-        config_path = "/home/angelika/vae/configs/config_vq-f4-noattn.yaml"
-        with open(config_path, 'r') as file:
-            config = yaml.safe_load(file)
-        self.encoder_latent = EncoderLatent(**config['model']['params']['ddconfig'], **config['model']['params'])
 
-        # self.encoder_latent = EncoderLatentTiny()
+        ######################################################################################
 
+        encoder_latent_type = "medium"  # "medium" or "tiny" or None
+
+        if encoder_latent_type is not None:
+            if encoder_latent_type == "medium":
+                config_path = "/home/angelika/latentpixelsplat/config/model/encoder/latent/config_vq-f4-noattn.yaml"
+                with open(config_path, 'r') as file:
+                    config = yaml.safe_load(file)
+                self.encoder_latent = EncoderLatent(
+                    **config['model']['params']['ddconfig'], **config['model']['params'])
+                self.latent_dim = config['model']['params']['embed_dim']
+
+            elif encoder_latent_type == "tiny":
+                config_path = "/home/angelika/latentpixelsplat/config/model/encoder/latent/latent_tiny.yaml"
+                with open(config_path, 'r') as file:
+                    config = yaml.safe_load(file)
+                self.encoder_latent = EncoderLatentTiny(
+                    d_in=config['d_in'], d_out=config['d_out'])
+                self.latent_dim = config['d_out']
+            else:
+                raise ValueError(
+                    f"Unknown encoder_latent_type: {encoder_latent_type}")
+
+        else:
+            self.latent_dim = 3
 
         if cfg.use_epipolar_transformer:
             self.epipolar_transformer = EpipolarTransformer(
@@ -83,13 +102,13 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             )
         else:
             self.epipolar_transformer = None
-        
+
         self.depth_predictor = DepthPredictorMonocular(
             cfg.d_feature,
             cfg.num_monocular_samples,
             cfg.num_surfaces,
             cfg.use_transmittance,
-        )        
+        )
         self.gaussian_adapter = GaussianAdapter(cfg.gaussian_adapter)
         if cfg.predict_opacity:
             self.to_opacity = nn.Sequential(
@@ -104,8 +123,9 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 cfg.num_surfaces * (2 + self.gaussian_adapter.d_in),
             ),
         )
+
         self.high_resolution_skip = nn.Sequential(
-            nn.Conv2d(3, cfg.d_feature, 7, 1, 3),
+            nn.Conv2d(self.latent_dim, cfg.d_feature, 7, 1, 3),
             nn.ReLU(),
         )
 
@@ -118,7 +138,8 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
 
         # Figure out the exponent.
         cfg = self.cfg.opacity_mapping
-        x = cfg.initial + min(global_step / cfg.warm_up, 1) * (cfg.final - cfg.initial)
+        x = cfg.initial + min(global_step / cfg.warm_up,
+                              1) * (cfg.final - cfg.initial)
         exponent = 2**x
 
         # Map the probability density to an opacity.
@@ -131,12 +152,12 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         deterministic: bool = False,
         visualization_dump: Optional[dict] = None,
     ) -> Gaussians:
-        
+
         torch.cuda.synchronize()
         t0 = time.time()
 
         device = context["image"].device
-        b, v, _, h, w = context["image"].shape        
+        b, v, _, h, w = context["image"].shape
 
         # Encode the context images.
         features = self.backbone(context)
@@ -147,7 +168,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         torch.cuda.synchronize()
         t_backbone = time.time() - t0
         torch.cuda.synchronize()
-        t0 = time.time() 
+        t0 = time.time()
 
         # Run the epipolar transformer.
         if self.cfg.use_epipolar_transformer:
@@ -158,12 +179,12 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 context["near"],
                 context["far"],
             )
-        
+
         features = rearrange(features, "b v c h w -> (b v) c h w")
-        features = F.interpolate(features, size=(h//4, w//4), mode="bilinear", align_corners=False)
+        features = F.interpolate(features, size=(
+            h//4, w//4), mode="bilinear", align_corners=False)
         # features = F.avg_pool2d(features, kernel_size=4, stride=4)
         features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
-
 
         torch.cuda.synchronize()
         t_epipolar_transformer = time.time() - t0
@@ -176,34 +197,34 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         # features = features + rearrange(skip, "(b v) c h w -> b v c h w", b=b, v=v)
 
         ############################################################################
-        
+
         # Add latent skip connection.
         skip = rearrange(context["image"], "b v c h w -> (b v) c h w")
 
-        if isinstance(self.encoder_latent, EncoderLatent):    # Input channels: 3, output channels: 3
+        # Input channels: 3, output channels: 3
+        if isinstance(self.encoder_latent, EncoderLatent):
             skip = self.encoder_latent(skip)
-            skip = F.interpolate(skip, size=(h//4, w//4), mode="bilinear", align_corners=False)
-        elif isinstance(self.encoder_latent, EncoderLatentTiny):    # Input channels: 3, output channels: 4
+            skip = F.interpolate(skip, size=(h//4, w//4),
+                                 mode="bilinear", align_corners=False)
+        # Input channels: 3, output channels: 4
+        elif isinstance(self.encoder_latent, EncoderLatentTiny):
             skip = self.encoder_latent(skip)
-            skip = skip[:, :-1, :, :]
         else:
             raise ValueError("Unknown latent encoder type")
-
-
-        skip = self.high_resolution_skip(skip)
-        features = features + rearrange(skip, "(b v) c h w -> b v c h w", b=b, v=v)
 
         torch.cuda.synchronize()
         t_latent_encoder = time.time() - t0
         torch.cuda.synchronize()
         t0 = time.time()
-        
-        
-        # # Max pool for debug ##############################################
-        # features = rearrange(features, "b v c h w -> (b v) c h w")
-        # features = F.max_pool2d(features, kernel_size=4, stride=4)
-        # features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
 
+        skip = self.high_resolution_skip(skip)
+        features = features + \
+            rearrange(skip, "(b v) c h w -> b v c h w", b=b, v=v)
+
+        torch.cuda.synchronize()
+        t_skip = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
 
         # Sample depths from the resulting features.
         features = rearrange(features, "b v c h w -> b v (h w) c")
@@ -220,13 +241,12 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         torch.cuda.synchronize()
         t0 = time.time()
 
-
         # Convert the features and depths into Gaussians.
-        h_down = h // 4   ######################################################################
+        h_down = h // 4
         w_down = w // 4
-        
+
         xy_ray, _ = sample_image_grid((h_down, w_down), device)
-        xy_ray = rearrange(xy_ray, "h w xy -> (h w) () xy")            
+        xy_ray = rearrange(xy_ray, "h w xy -> (h w) () xy")
         gaussians = rearrange(
             self.to_gaussians(features),
             "... (srf c) -> ... srf c",
@@ -234,7 +254,8 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         )
 
         offset_xy = gaussians[..., :2].sigmoid()
-        pixel_size = 1 / torch.tensor((w_down, h_down), dtype=torch.float32, device=device)
+        pixel_size = 1 / \
+            torch.tensor((w_down, h_down), dtype=torch.float32, device=device)
         xy_ray = xy_ray + (offset_xy - 0.5) * pixel_size
         gpp = self.cfg.gaussians_per_pixel
 
@@ -252,6 +273,8 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         t_gaussian_adapter = time.time() - t0
         torch.cuda.synchronize()
         t0 = time.time()
+
+        # breakpoint()
 
         # Dump visualizations if needed.
         if visualization_dump is not None:
@@ -273,9 +296,6 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             if self.cfg.predict_opacity
             else 1
         )
-
-        t_vis = time.time() - t0
-        breakpoint()
 
         return Gaussians(
             rearrange(

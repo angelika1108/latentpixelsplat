@@ -15,6 +15,7 @@ from .decoder import Decoder, DecoderOutput
 @dataclass
 class DecoderSplattingCUDACfg:
     name: Literal["splatting_cuda"]
+    use_sh: bool
 
 
 class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
@@ -32,6 +33,8 @@ class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
             persistent=False,
         )
 
+        self.use_sh = cfg.use_sh
+
     def forward(
         self,
         gaussians: Gaussians,
@@ -42,7 +45,7 @@ class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
         image_shape: tuple[int, int],
         depth_mode: DepthRenderingMode | None = None,
     ) -> DecoderOutput:
-        b, v, _, _ = extrinsics.shape       
+        b, v, _, _ = extrinsics.shape
 
         color = render_cuda(
             rearrange(extrinsics, "b v i j -> (b v) i j"),
@@ -55,6 +58,7 @@ class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
             repeat(gaussians.covariances, "b g i j -> (b v) g i j", v=v),
             repeat(gaussians.harmonics, "b g c d_sh -> (b v) g c d_sh", v=v),
             repeat(gaussians.opacities, "b g -> (b v) g", v=v),
+            use_sh=self.use_sh,
         )
         color = rearrange(color, "(b v) c h w -> b v c h w", b=b, v=v)
 
@@ -62,7 +66,7 @@ class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
             depth = self.render_depth(
                 gaussians, extrinsics, intrinsics, near, far, image_shape, depth_mode
             )
-        
+
         return DecoderOutput(
             color,
             None if depth_mode is None else depth,

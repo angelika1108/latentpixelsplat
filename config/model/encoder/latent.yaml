@@ -1,4 +1,0 @@
-name: latent_encoder
-
-model: latent_encoder
-d_out: 3

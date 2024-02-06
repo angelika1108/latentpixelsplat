@@ -109,13 +109,27 @@ def train(cfg_dict: DictConfig):
     encoder, encoder_visualizer = get_encoder(cfg.model.encoder)
 
     #############################################################################################
-    config_path = "/home/angelika/vae/configs/config_vq-f4-noattn.yaml"
-    with open(config_path, 'r') as file:
-        config = yaml.safe_load(file)
-    decoder_latent = DecoderLatent(
-        **config['model']['params']['ddconfig'], **config['model']['params'])
 
-    # decoder_latent = DecoderLatentTiny()
+    decoder_latent_type = 'medium' # 'tiny' or 'medium' or None
+
+    if decoder_latent_type is not None:
+        if decoder_latent_type == "medium":
+            config_path = "/home/angelika/latentpixelsplat/config/model/decoder/latent/config_vq-f4-noattn.yaml"
+            with open(config_path, 'r') as file:
+                config = yaml.safe_load(file)
+            
+            decoder_latent = DecoderLatent(
+                **config['model']['params']['ddconfig'], **config['model']['params'])
+        
+        elif decoder_latent_type == "tiny":
+            config_path = "/home/angelika/latentpixelsplat/config/model/decoder/latent/latent_tiny.yaml"
+            with open(config_path, 'r') as file:
+                config = yaml.safe_load(file)
+
+            decoder_latent = DecoderLatentTiny(d_in=config['d_in'], d_out=config['d_out'])
+        
+        else:
+            raise ValueError(f"Unknown decoder_latent_type: {decoder_latent_type}")
 
 
     model_wrapper = ModelWrapper(

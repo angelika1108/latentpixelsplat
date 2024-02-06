@@ -1,10 +1,8 @@
 import torch
 import torch.nn.functional as F
+import torch.nn as nn
+import time
 from einops import rearrange
-from jaxtyping import Float
-from torch import Tensor, nn
-
-from ...dataset.types import BatchedViews
 
 
 # From https://github.com/CompVis/latent-diffusion/
@@ -32,6 +30,7 @@ class EncoderLatent(nn.Module):
         in_ch_mult = (1,)+tuple(ch_mult)
         self.in_ch_mult = in_ch_mult
         self.down = nn.ModuleList()
+
         for i_level in range(self.num_resolutions):
             block = nn.ModuleList()
             attn = nn.ModuleList()
@@ -73,6 +72,10 @@ class EncoderLatent(nn.Module):
         self.quant_conv = torch.nn.Conv2d(z_channels, embed_dim, 1)
 
     def forward(self, x):
+
+        torch.cuda.synchronize()
+        t0 = time.time()
+
         # downsampling
         hs = [self.conv_in(x)]
         for i_level in range(self.num_resolutions):
@@ -83,6 +86,11 @@ class EncoderLatent(nn.Module):
                 hs.append(h)
             if i_level != self.num_resolutions-1:
                 hs.append(self.down[i_level].downsample(hs[-1]))
+        
+        torch.cuda.synchronize()
+        t_downsample = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
 
         # middle
         h = hs[-1]
@@ -90,12 +98,24 @@ class EncoderLatent(nn.Module):
         h = self.mid.attn_1(h)
         h = self.mid.block_2(h)
 
+        torch.cuda.synchronize()
+        t_middle = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
+
         # end
         h = self.norm_out(h)
         h = nonlinearity(h)
         h = self.conv_out(h)
 
         h = self.quant_conv(h)
+
+        torch.cuda.synchronize()
+        t_end = time.time() - t0
+        torch.cuda.synchronize()
+        t0 = time.time()
+        # breakpoint() # 22 layers   7+15
+
         return h
 
 
@@ -308,12 +328,10 @@ class EncoderLatentTiny(nn.Module):
         # b, v, _, h, w = context["image"].shape
         # x = rearrange(context["image"], "b v c h w -> (b v) c h w")
 
+        # Input image has to be in the range [0, 1]
         features = self.layers(x)
-        # # Scale image from [-1, 1] to [0, 1] to match TAESD convention
-        # features = self.layers(x.add(1).div(2))
-
-        # Separate batch dimensions.
-        return features # rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
+        
+        return features # if separate batch dimensions: rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
 
 
 
