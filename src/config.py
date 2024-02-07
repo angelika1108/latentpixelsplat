@@ -46,6 +46,8 @@ class RootCfg:
     test: TestCfg
     train: TrainCfg
     seed: int
+    decoder_latent_type: str | None
+    freeze_latent: bool
 
 
 TYPE_HOOKS = {

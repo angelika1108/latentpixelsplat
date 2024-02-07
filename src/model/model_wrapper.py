@@ -90,9 +90,9 @@ class ModelWrapper(LightningModule):
         encoder: Encoder,
         encoder_visualizer: Optional[EncoderVisualizer],
         decoder: Decoder,
-        decoder_latent: nn.Module,
         losses: list[Loss],
         step_tracker: StepTracker | None, 
+        decoder_latent: nn.Module | None,
     ) -> None:
         super().__init__()
         self.optimizer_cfg = optimizer_cfg
@@ -118,7 +118,10 @@ class ModelWrapper(LightningModule):
         # Run the model.
         gaussians = self.encoder(batch["context"], self.global_step, False)
 
-        h_new, w_new = h // 4, w // 4  #############################################################
+        if self.decoder_latent is not None:
+            h_new, w_new = h // 4, w // 4    # downsample 4
+        else:
+            h_new, w_new = h, w
 
         output = self.decoder.forward(
             gaussians,
@@ -133,8 +136,19 @@ class ModelWrapper(LightningModule):
         # Latent decoder
         b, v, _, _, _ = output.color.shape
         output.color = rearrange(output.color, "b v c h w -> (b v) c h w")
-        output.color = self.decoder_latent.forward(output.color)
-        output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
+
+        if isinstance(self.decoder_latent, DecoderLatent):    # Input channels: 3, output channels: 3
+            output.color = self.decoder_latent.forward(output.color)
+            output.color = (output.color - output.color.min()) / (output.color.max() - output.color.min())
+            output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
+
+        elif isinstance(self.decoder_latent, DecoderLatentTiny):    # Input channels: 4, output channels: 3
+            output.color = torch.cat((output.color, output.color[:, -1:, :, :]), dim=1)
+            output.color = self.decoder_latent.forward(output.color)
+            output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
+        
+        else: # No latent decoder
+            output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
 
 
         target_gt = batch["target"]["image"]
@@ -192,7 +206,10 @@ class ModelWrapper(LightningModule):
         torch.cuda.synchronize()
         t0 = time.time() 
 
-        h_new, w_new = h // 4, w // 4  #############################################################
+        if self.decoder_latent is not None:
+            h_new, w_new = h // 4, w // 4    # downsample 4
+        else:
+            h_new, w_new = h, w
 
         with self.benchmarker.time("decoder", num_calls=v):
             output = self.decoder.forward(
@@ -209,6 +226,8 @@ class ModelWrapper(LightningModule):
         torch.cuda.synchronize()
         t0 = time.time() 
 
+        # breakpoint()
+
         # Latent decoder
         b, v, _, _, _ = output.color.shape
         output.color = rearrange(output.color, "b v c h w -> (b v) c h w")
@@ -224,10 +243,9 @@ class ModelWrapper(LightningModule):
             output.color = self.decoder_latent.forward(output.color)
             output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
         
-        else:
+        else: # No latent decoder
             output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
         
-
         torch.cuda.synchronize()
         t_decoder_latent = time.time() - t0
         torch.cuda.synchronize()
@@ -269,7 +287,10 @@ class ModelWrapper(LightningModule):
             deterministic=False,
         )
 
-        h_new, w_new = h // 4, w // 4  #############################################################
+        if self.decoder_latent is not None:
+            h_new, w_new = h // 4, w // 4    # downsample 4
+        else:
+            h_new, w_new = h, w
         
         output_probabilistic = self.decoder.forward(
             gaussians_probabilistic,
@@ -283,8 +304,19 @@ class ModelWrapper(LightningModule):
         # Latent decoder
         b, v, _, _, _ = output_probabilistic.color.shape
         output_probabilistic.color = rearrange(output_probabilistic.color, "b v c h w -> (b v) c h w")
-        output_probabilistic.color = self.decoder_latent.forward(output_probabilistic.color)
-        output_probabilistic.color = rearrange(output_probabilistic.color, "(b v) c h w -> b v c h w", b=b, v=v)
+
+        if isinstance(self.decoder_latent, DecoderLatent):    # Input channels: 3, output channels: 3
+            output_probabilistic.color = self.decoder_latent.forward(output_probabilistic.color)
+            output_probabilistic.color = (output_probabilistic.color - output_probabilistic.color.min()) / (output_probabilistic.color.max() - output_probabilistic.color.min())
+            output_probabilistic.color = rearrange(output_probabilistic.color, "(b v) c h w -> b v c h w", b=b, v=v)
+
+        elif isinstance(self.decoder_latent, DecoderLatentTiny):    # Input channels: 4, output channels: 3
+            output_probabilistic.color = torch.cat((output_probabilistic.color, output_probabilistic.color[:, -1:, :, :]), dim=1)
+            output_probabilistic.color = self.decoder_latent.forward(output_probabilistic.color)
+            output_probabilistic.color = rearrange(output_probabilistic.color, "(b v) c h w -> b v c h w", b=b, v=v)
+        
+        else: # No latent decoder
+            output_probabilistic.color = rearrange(output_probabilistic.color, "(b v) c h w -> b v c h w", b=b, v=v)
 
 
         rgb_probabilistic = output_probabilistic.color[0]
@@ -306,8 +338,19 @@ class ModelWrapper(LightningModule):
         # Latent decoder
         b, v, _, _, _ = output_deterministic.color.shape
         output_deterministic.color = rearrange(output_deterministic.color, "b v c h w -> (b v) c h w")
-        output_deterministic.color = self.decoder_latent.forward(output_deterministic.color)
-        output_deterministic.color = rearrange(output_deterministic.color, "(b v) c h w -> b v c h w", b=b, v=v)
+
+        if isinstance(self.decoder_latent, DecoderLatent):    # Input channels: 3, output channels: 3
+            output_deterministic.color = self.decoder_latent.forward(output_deterministic.color)
+            output_deterministic.color = (output_deterministic.color - output_deterministic.color.min()) / (output_deterministic.color.max() - output_deterministic.color.min())
+            output_deterministic.color = rearrange(output_deterministic.color, "(b v) c h w -> b v c h w", b=b, v=v)
+
+        elif isinstance(self.decoder_latent, DecoderLatentTiny):    # Input channels: 4, output channels: 3
+            output_deterministic.color = torch.cat((output_deterministic.color, output_deterministic.color[:, -1:, :, :]), dim=1)
+            output_deterministic.color = self.decoder_latent.forward(output_deterministic.color)
+            output_deterministic.color = rearrange(output_deterministic.color, "(b v) c h w -> b v c h w", b=b, v=v)
+        
+        else: # No latent decoder
+            output_deterministic.color = rearrange(output_deterministic.color, "(b v) c h w -> b v c h w", b=b, v=v)
 
 
         rgb_deterministic = output_deterministic.color[0]

@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Literal, Optional
 import time
+import sys
+sys.path.append('../../../')
 
 import torch
 from einops import rearrange
@@ -47,6 +49,7 @@ class EncoderEpipolarCfg:
     gaussians_per_pixel: int
     use_epipolar_transformer: bool
     use_transmittance: bool
+    encoder_latent_type: str | None
 
 
 class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
@@ -68,32 +71,32 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             nn.Linear(self.backbone.d_out, cfg.d_feature),
         )
 
-        ######################################################################################
+        self.encoder_latent_type = cfg.encoder_latent_type  # "medium" or "tiny" or None
 
-        encoder_latent_type = "medium"  # "medium" or "tiny" or None
-
-        if encoder_latent_type is not None:
-            if encoder_latent_type == "medium":
-                config_path = "/home/angelika/latentpixelsplat/config/model/encoder/latent/config_vq-f4-noattn.yaml"
-                with open(config_path, 'r') as file:
-                    config = yaml.safe_load(file)
-                self.encoder_latent = EncoderLatent(
-                    **config['model']['params']['ddconfig'], **config['model']['params'])
-                self.latent_dim = config['model']['params']['embed_dim']
-
-            elif encoder_latent_type == "tiny":
-                config_path = "/home/angelika/latentpixelsplat/config/model/encoder/latent/latent_tiny.yaml"
-                with open(config_path, 'r') as file:
-                    config = yaml.safe_load(file)
-                self.encoder_latent = EncoderLatentTiny(
-                    d_in=config['d_in'], d_out=config['d_out'])
-                self.latent_dim = config['d_out']
-            else:
-                raise ValueError(
-                    f"Unknown encoder_latent_type: {encoder_latent_type}")
-
-        else:
+        if self.encoder_latent_type is None:
+            self.encoder_latent = None
             self.latent_dim = 3
+        
+        elif self.encoder_latent_type == "medium":
+            config_path = "config/model/encoder/latent/config_vq-f4-noattn.yaml"
+            with open(config_path, 'r') as file:
+                config = yaml.safe_load(file)
+            self.encoder_latent = EncoderLatent(
+                **config['model']['params']['ddconfig'], **config['model']['params'])
+            self.latent_dim = config['model']['params']['embed_dim']
+
+        elif self.encoder_latent_type == "tiny":
+            config_path = "config/model/encoder/latent/latent_tiny.yaml"
+            with open(config_path, 'r') as file:
+                config = yaml.safe_load(file)
+            self.encoder_latent = EncoderLatentTiny(
+                d_in=config['d_in'], d_out=config['d_out'])
+            self.latent_dim = config['d_out']
+        
+        else:
+            raise ValueError(
+                f"Unknown encoder_latent_type: {self.encoder_latent_type}")
+
 
         if cfg.use_epipolar_transformer:
             self.epipolar_transformer = EpipolarTransformer(
@@ -180,37 +183,29 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 context["far"],
             )
 
-        features = rearrange(features, "b v c h w -> (b v) c h w")
-        features = F.interpolate(features, size=(
-            h//4, w//4), mode="bilinear", align_corners=False)
-        # features = F.avg_pool2d(features, kernel_size=4, stride=4)
-        features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
-
         torch.cuda.synchronize()
         t_epipolar_transformer = time.time() - t0
         torch.cuda.synchronize()
         t0 = time.time()
 
-        # # Add the high-resolution skip connection.
-        # skip = rearrange(context["image"], "b v c h w -> (b v) c h w")
-        # skip = self.high_resolution_skip(skip)
-        # features = features + rearrange(skip, "(b v) c h w -> b v c h w", b=b, v=v)
-
-        ############################################################################
-
-        # Add latent skip connection.
+        # Add the high-resolution skip connection.
         skip = rearrange(context["image"], "b v c h w -> (b v) c h w")
 
         # Input channels: 3, output channels: 3
-        if isinstance(self.encoder_latent, EncoderLatent):
-            skip = self.encoder_latent(skip)
-            skip = F.interpolate(skip, size=(h//4, w//4),
-                                 mode="bilinear", align_corners=False)
-        # Input channels: 3, output channels: 4
-        elif isinstance(self.encoder_latent, EncoderLatentTiny):
-            skip = self.encoder_latent(skip)
-        else:
-            raise ValueError("Unknown latent encoder type")
+        if self.encoder_latent is not None:
+            # Calculate latent skip connection.
+            features = rearrange(features, "b v c h w -> (b v) c h w")
+            features = F.interpolate(features, size=(
+                h//4, w//4), mode="bilinear", align_corners=False)
+            # features = F.avg_pool2d(features, kernel_size=4, stride=4)
+            features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
+
+            if isinstance(self.encoder_latent, EncoderLatent):
+                skip = self.encoder_latent(skip)  # Input channels: 3, output channels: 3
+            elif isinstance(self.encoder_latent, EncoderLatentTiny):
+                skip = self.encoder_latent(skip)  # Input channels: 3, output channels: 4
+            else:
+                raise ValueError("Unknown latent encoder type")
 
         torch.cuda.synchronize()
         t_latent_encoder = time.time() - t0
@@ -242,8 +237,12 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         t0 = time.time()
 
         # Convert the features and depths into Gaussians.
-        h_down = h // 4
-        w_down = w // 4
+        if self.encoder_latent_type is not None:
+            h_down = h // 4
+            w_down = w // 4
+        else:
+            h_down = h
+            w_down = w
 
         xy_ray, _ = sample_image_grid((h_down, w_down), device)
         xy_ray = rearrange(xy_ray, "h w xy -> (h w) () xy")

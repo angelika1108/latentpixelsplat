@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 import yaml
+import sys
+sys.path.append('../')
 
 import hydra
 import torch
@@ -107,29 +109,29 @@ def train(cfg_dict: DictConfig):
     )
 
     encoder, encoder_visualizer = get_encoder(cfg.model.encoder)
+    
+    decoder_latent_type = cfg.decoder_latent_type
+    
+    if decoder_latent_type is None:
+        decoder_latent = None
 
-    #############################################################################################
-
-    decoder_latent_type = 'medium' # 'tiny' or 'medium' or None
-
-    if decoder_latent_type is not None:
-        if decoder_latent_type == "medium":
-            config_path = "/home/angelika/latentpixelsplat/config/model/decoder/latent/config_vq-f4-noattn.yaml"
-            with open(config_path, 'r') as file:
-                config = yaml.safe_load(file)
-            
-            decoder_latent = DecoderLatent(
-                **config['model']['params']['ddconfig'], **config['model']['params'])
+    elif decoder_latent_type == "medium":
+        config_path = "config/model/decoder/latent/config_vq-f4-noattn.yaml"
+        with open(config_path, 'r') as file:
+            config = yaml.safe_load(file)
         
-        elif decoder_latent_type == "tiny":
-            config_path = "/home/angelika/latentpixelsplat/config/model/decoder/latent/latent_tiny.yaml"
-            with open(config_path, 'r') as file:
-                config = yaml.safe_load(file)
+        decoder_latent = DecoderLatent(
+            **config['model']['params']['ddconfig'], **config['model']['params'])
+    
+    elif decoder_latent_type == "tiny":
+        config_path = "config/model/decoder/latent/latent_tiny.yaml"
+        with open(config_path, 'r') as file:
+            config = yaml.safe_load(file)
 
-            decoder_latent = DecoderLatentTiny(d_in=config['d_in'], d_out=config['d_out'])
-        
-        else:
-            raise ValueError(f"Unknown decoder_latent_type: {decoder_latent_type}")
+        decoder_latent = DecoderLatentTiny(d_in=config['d_in'], d_out=config['d_out'])
+    
+    else:
+        raise ValueError(f"Unknown decoder_latent_type: {decoder_latent_type}")
 
 
     model_wrapper = ModelWrapper(
@@ -139,19 +141,20 @@ def train(cfg_dict: DictConfig):
         encoder,
         encoder_visualizer,
         get_decoder(cfg.model.decoder, cfg.dataset),
-        decoder_latent,
         get_losses(cfg.loss),
         step_tracker, 
+        decoder_latent=decoder_latent,
     )
     
-    
-    print('==> Freeze latent encoder and decoder')
-    # model_wrapper.decoder_latent.state_dict().keys()
-    # model_wrapper.decoder_latent.state_dict()['quantize.embedding.weight'].requires_grad
-    for param in model_wrapper.encoder.encoder_latent.parameters():
-        param.requires_grad = False
-    for param in model_wrapper.decoder_latent.parameters():
-        param.requires_grad = False
+
+    if cfg.freeze_latent and decoder_latent_type is not None:
+        print('==> Freeze latent encoder and decoder')
+        # model_wrapper.decoder_latent.state_dict().keys()
+        # model_wrapper.decoder_latent.state_dict()['quantize.embedding.weight'].requires_grad
+        for param in model_wrapper.encoder.encoder_latent.parameters():
+            param.requires_grad = False
+        for param in model_wrapper.decoder_latent.parameters():
+            param.requires_grad = False
        
     
     data_module = DataModule(cfg.dataset, cfg.data_loader, step_tracker)

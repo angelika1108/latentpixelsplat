@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=debug  # name of job
-##SBATCH -C v100-32g 							   # reserving 16 GB GPUs only if commented
+#SBATCH --job-name=latent_m_s50000_gpu1  # name of job
+#SBATCH -C v100-32g 							   # reserving 16 GB GPUs only if commented
 ##SBATCH --partition=gpu_p2                        # uncomment for gpu_p2 partition gpu_p2
 #SBATCH --ntasks=1					 			   # total number of processes (= number of GPUs here)
 ##SBATCH --ntasks-per-node=1
@@ -9,15 +9,15 @@
 #SBATCH --cpus-per-task=10           			   # number of cores per task (1/4 of the 4-GPUs node)
 # /!\ Caution, "multithread" in Slurm vocabulary refers to hyperthreading.
 #SBATCH --hint=nomultithread         			   # hyperthreading is deactivated
-##SBATCH --time=20:00:00             			   # maximum execution time requested (HH:MM:SS)
-#SBATCH --time=00:10:00             			   # maximum execution time requested (HH:MM:SS)
-#SBATCH --output=slurm_logs/debug_%j.output   # name of output file
-#SBATCH --error=slurm_logs/debug_%j.error     # name of error file (here, in common with the output file)
+#SBATCH --time=10:00:00             			   # maximum execution time requested (HH:MM:SS)
+##SBATCH --time=00:10:00             			   # maximum execution time requested (HH:MM:SS)
+#SBATCH --output=slurm_logs/latent_m_s50000_gpu1_%j.output   # name of output file
+#SBATCH --error=slurm_logs/latent_m_s50000_gpu1_%j.error     # name of error file (here, in common with the output file)
 ##SBATCH --qos=qos_gpu-t4                          # for running (max 100h)
-##SBATCH --qos=qos_gpu-t3                          # for running (max 20h)
-#SBATCH --qos=qos_gpu-dev                          # for veryfuing that the code is running.
+#SBATCH --qos=qos_gpu-t3                          # for running (max 20h)
+##SBATCH --qos=qos_gpu-dev                          # for veryfuing that the code is running.
 
-EXP_NAME="debug"
+EXP_NAME="latent_m_s50000_gpu1"
 OUTPUT_DUMP="${WORK}/experiments/latentpixelsplat/${EXP_NAME}"
 
 mkdir -p "${OUTPUT_DUMP}"
