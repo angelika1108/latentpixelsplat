@@ -27,6 +27,7 @@ class EpipolarTransformerCfg:
     d_dot: int
     d_mlp: int
     downscale: int
+    upscale: int
 
 
 class EpipolarTransformer(nn.Module):
@@ -65,15 +66,20 @@ class EpipolarTransformer(nn.Module):
             kv_dim=d_in,
             feed_forward_layer=feed_forward_layer,
         )
-
-        if cfg.downscale:
-            self.downscaler = nn.Conv2d(d_in, d_in, cfg.downscale, cfg.downscale)
+        
+        self.downscaler = nn.Conv2d(d_in, d_in, cfg.downscale, cfg.downscale) if cfg.downscale else None
+        
+        if cfg.upscale:
             self.upscaler = nn.ConvTranspose2d(d_in, d_in, cfg.downscale, cfg.downscale)
             self.upscale_refinement = nn.Sequential(
                 nn.Conv2d(d_in, d_in * 2, 7, 1, 3),
                 nn.GELU(),
                 nn.Conv2d(d_in * 2, d_in, 7, 1, 3),
             )
+        else:
+            self.upscaler = None
+            self.upscale_refinement = None
+
 
     def forward(
         self,
@@ -162,7 +168,7 @@ class EpipolarTransformer(nn.Module):
         t_transformer = time.time() - t0
         torch.cuda.synchronize()
         t0 = time.time()
-
+        
         # If needed, apply upscaling.
         if self.upscaler is not None:
             features = rearrange(features, "b v c h w -> (b v) c h w")
@@ -174,8 +180,7 @@ class EpipolarTransformer(nn.Module):
         t_upscaler = time.time() - t0
         torch.cuda.synchronize()
         t0 = time.time()
-        # breakpoint()
-
+        breakpoint()
         return features, sampling
 
 

@@ -71,6 +71,8 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             nn.Linear(self.backbone.d_out, cfg.d_feature),
         )
 
+        self.epipolar_transformer_upscale = cfg.epipolar_transformer.upscale
+        
         self.encoder_latent_type = cfg.encoder_latent_type  # "medium" or "tiny" or None
 
         if self.encoder_latent_type is None:
@@ -183,10 +185,20 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 context["far"],
             )
 
+        breakpoint()
+        
         torch.cuda.synchronize()
         t_epipolar_transformer = time.time() - t0
         torch.cuda.synchronize()
         t0 = time.time()
+        
+        if self.epipolar_transformer_upscale:
+            features = rearrange(features, "b v c h w -> (b v) c h w")
+            features = F.interpolate(features, size=(
+                h//4, w//4), mode="bilinear", align_corners=False)
+            # features = F.avg_pool2d(features, kernel_size=4, stride=4)
+            features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
+        breakpoint()
 
         # Add the high-resolution skip connection.
         skip = rearrange(context["image"], "b v c h w -> (b v) c h w")
@@ -194,18 +206,14 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         # Input channels: 3, output channels: 3
         if self.encoder_latent is not None:
             # Calculate latent skip connection.
-            features = rearrange(features, "b v c h w -> (b v) c h w")
-            features = F.interpolate(features, size=(
-                h//4, w//4), mode="bilinear", align_corners=False)
-            # features = F.avg_pool2d(features, kernel_size=4, stride=4)
-            features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
-
             if isinstance(self.encoder_latent, EncoderLatent):
                 skip = self.encoder_latent(skip)  # Input channels: 3, output channels: 3
             elif isinstance(self.encoder_latent, EncoderLatentTiny):
                 skip = self.encoder_latent(skip)  # Input channels: 3, output channels: 4
             else:
                 raise ValueError("Unknown latent encoder type")
+        
+        breakpoint()
 
         torch.cuda.synchronize()
         t_latent_encoder = time.time() - t0

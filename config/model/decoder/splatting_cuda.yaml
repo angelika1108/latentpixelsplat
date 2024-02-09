@@ -1,3 +1,4 @@
 name: splatting_cuda
 
-use_sh: false
+use_sh: true
+latent_channels: 3

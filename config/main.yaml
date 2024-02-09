@@ -58,4 +58,4 @@ trainer:
   gradient_clip_val: 0.5
 
 decoder_latent_type: medium
-freeze_latent: true
+freeze_latent: false

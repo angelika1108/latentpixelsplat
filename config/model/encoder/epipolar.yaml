@@ -19,7 +19,7 @@ gaussian_adapter:
   gaussian_scale_min: 0.5
   gaussian_scale_max: 15.0
   sh_degree: 4
-  use_sh: false
+  use_sh: true
 
 d_feature: 128
 
@@ -39,6 +39,7 @@ epipolar_transformer:
   d_dot: 128
   d_mlp: 256
   downscale: 4
+  upscale: 4
 
 visualizer:
   num_samples: 8

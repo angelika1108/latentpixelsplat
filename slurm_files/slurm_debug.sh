@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=debug  # name of job
-##SBATCH -C v100-32g 							   # reserving 16 GB GPUs only if commented
+#SBATCH -C v100-32g 							   # reserving 16 GB GPUs only if commented
 ##SBATCH --partition=gpu_p2                        # uncomment for gpu_p2 partition gpu_p2
 #SBATCH --ntasks=1					 			   # total number of processes (= number of GPUs here)
 ##SBATCH --ntasks-per-node=1
