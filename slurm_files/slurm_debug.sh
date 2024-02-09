@@ -37,4 +37,3 @@ set -x
 # python -m torch.distributed.launch --nproc_per_node=4 --use_env main.py \
 #   --output_dir "${OUTPUT_DUMP}" --data_path "/gpfsdsscratch/acid/" \
 python3 -m src.main +experiment=acid data_loader.train.batch_size=1 trainer.val_check_interval=30 optimizer.warm_up_steps=1000 checkpointing.load=pretrained_models/acid_latent_d3_f4_noattn.ckpt checkpointing.every_n_train_steps=2000 trainer.max_steps=50000
-  
