@@ -169,7 +169,7 @@ cython_debug/
 
 .bashrc
 /launcher_venv
-/slurm_logs
+# slurm_logs
 *.torch
 *.ckpt
 table.tex
