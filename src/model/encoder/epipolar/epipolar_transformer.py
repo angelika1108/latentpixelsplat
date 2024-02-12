@@ -180,7 +180,7 @@ class EpipolarTransformer(nn.Module):
         t_upscaler = time.time() - t0
         torch.cuda.synchronize()
         t0 = time.time()
-        breakpoint()
+        # breakpoint()
         return features, sampling
 
 

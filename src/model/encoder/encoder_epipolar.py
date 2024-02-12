@@ -185,7 +185,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 context["far"],
             )
 
-        breakpoint()
+        # breakpoint()
         
         torch.cuda.synchronize()
         t_epipolar_transformer = time.time() - t0
@@ -198,7 +198,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 h//4, w//4), mode="bilinear", align_corners=False)
             # features = F.avg_pool2d(features, kernel_size=4, stride=4)
             features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
-        breakpoint()
+        # breakpoint()
 
         # Add the high-resolution skip connection.
         skip = rearrange(context["image"], "b v c h w -> (b v) c h w")
@@ -213,7 +213,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             else:
                 raise ValueError("Unknown latent encoder type")
         
-        breakpoint()
+        # breakpoint()
 
         torch.cuda.synchronize()
         t_latent_encoder = time.time() - t0
