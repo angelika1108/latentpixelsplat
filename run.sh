@@ -13,6 +13,10 @@ python3 -m src.main +experiment=acid mode=test dataset/view_sampler=evaluation c
 # Test on ACID with latent encoder and decoder with pre-trained weights
 python3 -m src.main +experiment=acid mode=test dataset/view_sampler=evaluation checkpointing.load=pretrained_models/acid_latent_d3_f4_noattn.ckpt dataset.view_sampler.index_path=assets/evaluation_index_acid.json
 
+# med_rnd_s50000_bs1
+python3 -m src.main +experiment=acid mode=test dataset/view_sampler=evaluation checkpointing.load=/home/angelika/latentpixelsplat/checkpoints/med_rnd_s50000_bs1/epoch5step12000.ckpt dataset.view_sampler.index_path=assets/evaluation_index_acid.json
+
+
 # Test without checkpoint
 python3 -m src.main +experiment=acid mode=test dataset/view_sampler=evaluation dataset.view_sampler.index_path=assets/evaluation_index_acid.json
 
