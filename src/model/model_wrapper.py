@@ -143,7 +143,6 @@ class ModelWrapper(LightningModule):
             output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
 
         elif isinstance(self.decoder_latent, DecoderLatentTiny):    # Input channels: 4, output channels: 3
-            output.color = torch.cat((output.color, output.color[:, -1:, :, :]), dim=1)
             output.color = self.decoder_latent.forward(output.color)
             output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
         
@@ -239,7 +238,6 @@ class ModelWrapper(LightningModule):
             output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
 
         elif isinstance(self.decoder_latent, DecoderLatentTiny):    # Input channels: 4, output channels: 3
-            output.color = torch.cat((output.color, output.color[:, -1:, :, :]), dim=1)
             output.color = self.decoder_latent.forward(output.color)
             output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
         
@@ -311,7 +309,6 @@ class ModelWrapper(LightningModule):
             output_probabilistic.color = rearrange(output_probabilistic.color, "(b v) c h w -> b v c h w", b=b, v=v)
 
         elif isinstance(self.decoder_latent, DecoderLatentTiny):    # Input channels: 4, output channels: 3
-            output_probabilistic.color = torch.cat((output_probabilistic.color, output_probabilistic.color[:, -1:, :, :]), dim=1)
             output_probabilistic.color = self.decoder_latent.forward(output_probabilistic.color)
             output_probabilistic.color = rearrange(output_probabilistic.color, "(b v) c h w -> b v c h w", b=b, v=v)
         
@@ -345,7 +342,6 @@ class ModelWrapper(LightningModule):
             output_deterministic.color = rearrange(output_deterministic.color, "(b v) c h w -> b v c h w", b=b, v=v)
 
         elif isinstance(self.decoder_latent, DecoderLatentTiny):    # Input channels: 4, output channels: 3
-            output_deterministic.color = torch.cat((output_deterministic.color, output_deterministic.color[:, -1:, :, :]), dim=1)
             output_deterministic.color = self.decoder_latent.forward(output_deterministic.color)
             output_deterministic.color = rearrange(output_deterministic.color, "(b v) c h w -> b v c h w", b=b, v=v)
         

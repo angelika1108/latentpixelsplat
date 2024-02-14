@@ -92,11 +92,13 @@ def train(cfg_dict: DictConfig):
     step_tracker = StepTracker()
 
 
+    # trainer = Trainer(accumulate_grad_batches=4)
+
     trainer = Trainer(
         max_epochs=-1,
-        accelerator="gpu",
         logger=logger,
-        devices="auto",
+        devices=cfg.trainer.devices,
+        accelerator="gpu",
         strategy="ddp_find_unused_parameters_true"
         if torch.cuda.device_count() > 1
         else "auto",

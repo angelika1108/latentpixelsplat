@@ -1,4 +1,4 @@
 name: splatting_cuda
 
-use_sh: true
+use_sh: false
 d_latent: 4

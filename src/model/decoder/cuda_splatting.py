@@ -53,15 +53,15 @@ def render_cuda(
     near: Float[Tensor, " batch"],
     far: Float[Tensor, " batch"],
     image_shape: tuple[int, int],
-    background_color: Float[Tensor, "batch 3"],
+    background_color: Float[Tensor, "batch dim_out"],
     gaussian_means: Float[Tensor, "batch gaussian 3"],
     gaussian_covariances: Float[Tensor, "batch gaussian 3 3"],
-    gaussian_sh_coefficients: Float[Tensor, "batch gaussian 3 d_sh"],
+    gaussian_sh_coefficients: Float[Tensor, "batch gaussian dim_out d_sh"],
     gaussian_opacities: Float[Tensor, "batch gaussian"],
     scale_invariant: bool = True,
     use_sh: bool = True,
     latent_channels: int = 3,
-) -> Float[Tensor, "batch 3 height width"]:
+) -> Float[Tensor, "batch dim_out height width"]:
     assert use_sh or gaussian_sh_coefficients.shape[-1] == 1
 
     # Make sure everything is in a range where numerical issues don't appear.
@@ -160,7 +160,7 @@ def render_cuda_orthographic(
     near: Float[Tensor, " batch"],
     far: Float[Tensor, " batch"],
     image_shape: tuple[int, int],
-    background_color: Float[Tensor, "batch 3"],
+    background_color: Float[Tensor, "batch dim_out"],
     gaussian_means: Float[Tensor, "batch gaussian 3"],
     gaussian_covariances: Float[Tensor, "batch gaussian 3 3"],
     gaussian_sh_coefficients: Float[Tensor, "batch gaussian 3 d_sh"],

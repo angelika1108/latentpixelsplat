@@ -50,6 +50,7 @@ class EncoderEpipolarCfg:
     use_epipolar_transformer: bool
     use_transmittance: bool
     encoder_latent_type: str | None
+    d_latent: int
 
 
 class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
@@ -114,7 +115,8 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             cfg.num_surfaces,
             cfg.use_transmittance,
         )
-        self.gaussian_adapter = GaussianAdapter(cfg.gaussian_adapter)
+        self.gaussian_adapter = GaussianAdapter(cfg.gaussian_adapter, cfg.d_latent)
+        
         if cfg.predict_opacity:
             self.to_opacity = nn.Sequential(
                 nn.ReLU(),
@@ -259,7 +261,6 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             "... (srf c) -> ... srf c",
             srf=self.cfg.num_surfaces,
         )
-
         offset_xy = gaussians[..., :2].sigmoid()
         pixel_size = 1 / \
             torch.tensor((w_down, h_down), dtype=torch.float32, device=device)

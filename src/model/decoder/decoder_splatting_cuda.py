@@ -20,7 +20,7 @@ class DecoderSplattingCUDACfg:
     
 
 class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
-    background_color: Float[Tensor, "3"]
+    background_color: Float[Tensor, "dim_out"]
 
     def __init__(
         self,
