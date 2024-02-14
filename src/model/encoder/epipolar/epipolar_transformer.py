@@ -88,7 +88,7 @@ class EpipolarTransformer(nn.Module):
         intrinsics: Float[Tensor, "batch view 3 3"],
         near: Float[Tensor, "batch view"],
         far: Float[Tensor, "batch view"],
-    ) -> tuple[Float[Tensor, "batch view channel height width"], EpipolarSampling,]:
+    ) -> tuple[Float[Tensor, "batch view channel output_h output_w"], EpipolarSampling,]:
         b, v, _, h, w = features.shape
 
         torch.cuda.synchronize()

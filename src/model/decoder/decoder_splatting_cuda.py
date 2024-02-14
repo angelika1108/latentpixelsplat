@@ -16,8 +16,8 @@ from .decoder import Decoder, DecoderOutput
 class DecoderSplattingCUDACfg:
     name: Literal["splatting_cuda"]
     use_sh: bool
-    latent_channels: int
-
+    d_latent: int
+    
 
 class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
     background_color: Float[Tensor, "3"]
@@ -35,7 +35,7 @@ class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
         )
 
         self.use_sh = cfg.use_sh
-        self.latent_channels = cfg.latent_channels
+        self.latent_channels = cfg.d_latent
 
     def forward(
         self,
