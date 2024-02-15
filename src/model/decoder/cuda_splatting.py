@@ -163,12 +163,13 @@ def render_cuda_orthographic(
     background_color: Float[Tensor, "batch dim_out"],
     gaussian_means: Float[Tensor, "batch gaussian 3"],
     gaussian_covariances: Float[Tensor, "batch gaussian 3 3"],
-    gaussian_sh_coefficients: Float[Tensor, "batch gaussian 3 d_sh"],
+    gaussian_sh_coefficients: Float[Tensor, "batch gaussian dim_out d_sh"],
     gaussian_opacities: Float[Tensor, "batch gaussian"],
     fov_degrees: float = 0.1,
     use_sh: bool = True,
     dump: dict | None = None,
-) -> Float[Tensor, "batch 3 height width"]:
+    latent_channels: int = 3,
+) -> Float[Tensor, "batch dim_out height width"]:
     b, _, _ = extrinsics.shape
     h, w = image_shape
     assert use_sh or gaussian_sh_coefficients.shape[-1] == 1
@@ -215,21 +216,43 @@ def render_cuda_orthographic(
         except Exception:
             pass
 
-        settings = GaussianRasterizationSettings(
-            image_height=h,
-            image_width=w,
-            tanfovx=tan_fov_x,
-            tanfovy=tan_fov_y,
-            bg=background_color[i],
-            scale_modifier=1.0,
-            viewmatrix=view_matrix[i],
-            projmatrix=full_projection[i],
-            sh_degree=degree,
-            campos=extrinsics[i, :3, 3],
-            prefiltered=False,  # This matches the original usage.
-            debug=False,
-        )
-        rasterizer = GaussianRasterizer(settings)
+        if latent_channels == 3:
+            settings = GaussianRasterizationSettings(
+                image_height=h,
+                image_width=w,
+                tanfovx=tan_fov_x,
+                tanfovy=tan_fov_y,
+                bg=background_color[i],
+                scale_modifier=1.0,
+                viewmatrix=view_matrix[i],
+                projmatrix=full_projection[i],
+                sh_degree=degree,
+                campos=extrinsics[i, :3, 3],
+                prefiltered=False,  # This matches the original usage.
+                debug=False,
+            )
+            rasterizer = GaussianRasterizer(settings)
+        
+        elif latent_channels == 4:
+            settings = GaussianRasterizationSettingsChannel4(
+                image_height=h,
+                image_width=w,
+                tanfovx=tan_fov_x,
+                tanfovy=tan_fov_y,
+                bg=background_color[i],
+                scale_modifier=1.0,
+                viewmatrix=view_matrix[i],
+                projmatrix=full_projection[i],
+                sh_degree=degree,
+                campos=extrinsics[i, :3, 3],
+                prefiltered=False,  # This matches the original usage.
+                debug=False,
+            )
+            rasterizer = GaussianRasterizerChannel4(settings)
+        
+        else:
+            raise ValueError(f"Not valid latent_channels value: {latent_channels}") 
+        
 
         row, col = torch.triu_indices(3, 3)
 

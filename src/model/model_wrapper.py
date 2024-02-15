@@ -2,6 +2,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Protocol, runtime_checkable
 import time
+import yaml
+import sys
+sys.path.append('../../')
 
 import moviepy.editor as mpy
 import torch
@@ -377,6 +380,13 @@ class ModelWrapper(LightningModule):
             caption=batch["scene"],
         )
 
+        ##################################################################################
+        config_splatting_cuda = "config/model/decoder/splatting_cuda.yaml"
+        with open(config_splatting_cuda, 'r') as file:
+            config = yaml.safe_load(file)
+
+        latent_channels = config['d_latent']
+    
         # Render projections and construct projection image.
         # These are disabled for now, since RE10k scenes are effectively unbounded.
         projections = vcat(
@@ -385,11 +395,15 @@ class ModelWrapper(LightningModule):
                     gaussians_probabilistic,
                     256,
                     extra_label="(Probabilistic)",
+                    latent_channels=latent_channels,
                 )[0]
             ),
             hcat(
                 *render_projections(
-                    gaussians_deterministic, 256, extra_label="(Deterministic)"
+                    gaussians_deterministic, 
+                    256, 
+                    extra_label="(Deterministic)",
+                    latent_channels=latent_channels,
                 )[0]
             ),
             align="left",

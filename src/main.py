@@ -105,7 +105,7 @@ def train(cfg_dict: DictConfig):
         gradient_clip_val=cfg.trainer.gradient_clip_val,
         max_steps=cfg.trainer.max_steps,
         profiler="advanced", # profiler, "simple", "advanced", "pytorch"
-        # accumulate_grad_batches=4,
+        # accumulate_grad_batches=4, 
     )
 
     encoder, encoder_visualizer = get_encoder(cfg.model.encoder)

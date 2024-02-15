@@ -1,5 +1,4 @@
 from pathlib import Path
-
 import hydra
 import torch
 from einops import einsum, rearrange, repeat
@@ -8,6 +7,9 @@ from lightning_fabric.utilities.apply_func import apply_to_collection
 from scipy.spatial.transform import Rotation as R
 from torch import Tensor
 from torch.utils.data import default_collate
+import yaml
+import sys
+sys.path.append('../../')
 
 # Configure beartype and jaxtyping.
 with install_import_hook(
@@ -60,6 +62,12 @@ def generate_point_cloud_figure(cfg_dict):
     set_cfg(cfg_dict)
     torch.manual_seed(cfg_dict.seed)
     device = torch.device("cuda:0")
+    
+    config_splatting_cuda = "config/model/decoder/splatting_cuda.yaml"
+    with open(config_splatting_cuda, 'r') as file:
+        config = yaml.safe_load(file)
+
+    latent_channels = config['d_latent']
 
     # Prepare the checkpoint for loading.
     checkpoint_path = update_checkpoint_path(cfg.checkpointing.load, cfg.wandb)
@@ -136,8 +144,8 @@ def generate_point_cloud_figure(cfg_dict):
             # visual balance, 0.5x pyramid/frustum volume
             translation[2, 3] = far * (0.5 ** (1 / 3))
             pose = translation @ pose
-
             ones = torch.ones((1,), dtype=torch.float32, device=device)
+            
             render_args = {
                 "extrinsics": example["context"]["extrinsics"][0, :1] @ pose,
                 "width": ones * far * 2,
@@ -146,7 +154,7 @@ def generate_point_cloud_figure(cfg_dict):
                 "far": ones * far,
                 "image_shape": (1024, 1024),
                 "background_color": torch.zeros(
-                    (1, 3), dtype=torch.float32, device=device
+                    (1, latent_channels), dtype=torch.float32, device=device
                 ),
                 "gaussian_means": trim(gaussians.means),
                 "gaussian_covariances": trim(gaussians.covariances),
@@ -163,10 +171,10 @@ def generate_point_cloud_figure(cfg_dict):
                 ),
                 "use_sh": False,
             }
-            alpha = render_cuda_orthographic(**alpha_args, dump=dump)[0]
+            alpha = render_cuda_orthographic(**alpha_args, dump=dump, latent_channels=latent_channels)[0]
 
             # Render (premultiplied) color.
-            color = render_cuda_orthographic(**render_args)[0]
+            color = render_cuda_orthographic(**render_args, latent_channels=latent_channels)[0]
 
             # Render depths. Without modifying the renderer, we can only render
             # premultiplied depth, then hackily transform it into straight alpha depth,
@@ -178,7 +186,7 @@ def generate_point_cloud_figure(cfg_dict):
                 "gaussian_sh_coefficients": repeat(depth, "() g -> () g c ()", c=3),
                 "use_sh": False,
             }
-            depth_premultiplied = render_cuda_orthographic(**depth_args)
+            depth_premultiplied = render_cuda_orthographic(**depth_args, latent_channels=latent_channels)
             depth = (depth_premultiplied / alpha).nan_to_num(posinf=1e10, nan=1e10)[0]
 
             # Save the rendering for later depth-based alpha compositing.

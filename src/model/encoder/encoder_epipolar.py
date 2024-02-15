@@ -200,7 +200,6 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 h//4, w//4), mode="bilinear", align_corners=False)
             # features = F.avg_pool2d(features, kernel_size=4, stride=4)
             features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
-        # breakpoint()
 
         # Add the high-resolution skip connection.
         skip = rearrange(context["image"], "b v c h w -> (b v) c h w")

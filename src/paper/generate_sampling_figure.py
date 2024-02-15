@@ -7,6 +7,9 @@ from scipy.spatial.transform import Rotation as R
 from torch import Tensor
 from torch.utils.data import default_collate
 from tqdm import tqdm
+import yaml
+import sys
+sys.path.append('../../')
 
 # Configure beartype and jaxtyping.
 with install_import_hook(
@@ -59,6 +62,12 @@ def generate_point_cloud_figure(cfg_dict):
     set_cfg(cfg_dict)
     torch.manual_seed(cfg_dict.seed)
     device = torch.device("cuda:0")
+    
+    config_splatting_cuda = "config/model/decoder/splatting_cuda.yaml"
+    with open(config_splatting_cuda, 'r') as file:
+        config = yaml.safe_load(file)
+
+    latent_channels = config['d_latent']
 
     # Prepare the checkpoint for loading.
     checkpoint_path = update_checkpoint_path(cfg.checkpointing.load, cfg.wandb)
@@ -180,7 +189,7 @@ def generate_point_cloud_figure(cfg_dict):
             "near": ones * 0,
             "far": ones * far,
             "image_shape": (RESOLUTION, RESOLUTION),
-            "background_color": torch.zeros((1, 3), dtype=torch.float32, device=device),
+            "background_color": torch.zeros((1, latent_channels), dtype=torch.float32, device=device),
             "gaussian_means": trim(gaussians.means),
             "gaussian_covariances": trim(gaussians.covariances),
             "gaussian_sh_coefficients": trim(gaussians.harmonics),
@@ -197,10 +206,10 @@ def generate_point_cloud_figure(cfg_dict):
             ),
             "use_sh": False,
         }
-        alpha = render_cuda_orthographic(**alpha_args, dump=dump)[0]
+        alpha = render_cuda_orthographic(**alpha_args, dump=dump, latent_channels=latent_channels)[0]
 
         # Render (premultiplied) color.
-        color = render_cuda_orthographic(**render_args)[0]
+        color = render_cuda_orthographic(**render_args, latent_channels=latent_channels)[0]
 
         # Render depths. Without modifying the renderer, we can only render
         # premultiplied depth, then hackily transform it into straight alpha depth,
@@ -212,7 +221,7 @@ def generate_point_cloud_figure(cfg_dict):
             "gaussian_sh_coefficients": repeat(depth, "() g -> () g c ()", c=3),
             "use_sh": False,
         }
-        depth_premultiplied = render_cuda_orthographic(**depth_args)
+        depth_premultiplied = render_cuda_orthographic(**depth_args, latent_channels=latent_channels)
         depth = (depth_premultiplied / alpha).nan_to_num(posinf=1e10, nan=1e10)[0]
 
         # Save the rendering for later depth-based alpha compositing.
