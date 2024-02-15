@@ -315,7 +315,7 @@ class EncoderLatentTiny(nn.Module):
     def __init__(self, d_in=3, d_out=4) -> None:
         super().__init__()
         assert d_in == 3
-
+                
         self.layers = nn.Sequential(
         nn.Conv2d(d_in, 64, 3, padding=1), Block(64, 64),
         nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),

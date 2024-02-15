@@ -102,7 +102,7 @@ class ModelWrapper(LightningModule):
         self.test_cfg = test_cfg
         self.train_cfg = train_cfg
         self.step_tracker = step_tracker
-
+        
         # Set up the model.
         self.encoder = encoder
         self.encoder_visualizer = encoder_visualizer
@@ -122,7 +122,7 @@ class ModelWrapper(LightningModule):
         gaussians = self.encoder(batch["context"], self.global_step, False)
 
         if self.decoder_latent is not None:
-            h_new, w_new = h // 4, w // 4    # downsample 4
+            h_new, w_new = h // 4, w // 4    # downsample
         else:
             h_new, w_new = h, w
 
@@ -209,7 +209,7 @@ class ModelWrapper(LightningModule):
         t0 = time.time() 
 
         if self.decoder_latent is not None:
-            h_new, w_new = h // 4, w // 4    # downsample 4
+            h_new, w_new = h // 4, w // 4    # downsample
         else:
             h_new, w_new = h, w
 
@@ -289,7 +289,7 @@ class ModelWrapper(LightningModule):
         )
 
         if self.decoder_latent is not None:
-            h_new, w_new = h // 4, w // 4    # downsample 4
+            h_new, w_new = h // 4, w // 4    # downsample
         else:
             h_new, w_new = h, w
         
