@@ -59,4 +59,4 @@ trainer:
   devices: 1
 
 decoder_latent_type: tiny
-freeze_latent: false
+freeze_latent: true

@@ -18,6 +18,7 @@ class EncoderLatent(nn.Module):
         self.num_res_blocks = num_res_blocks
         self.resolution = resolution
         self.in_channels = in_channels
+        self.downsample = ch_mult[-1]
 
         # downsampling
         self.conv_in = torch.nn.Conv2d(in_channels,
@@ -312,10 +313,11 @@ class Block(nn.Module):
 
 # Adapted from https://github.com/madebyollin/taesd
 class EncoderLatentTiny(nn.Module):
-    def __init__(self, d_in=3, d_out=4) -> None:
+    def __init__(self, d_in=3, d_out=4, downsample=4) -> None:
         super().__init__()
         assert d_in == 3
-                
+        self.downsample = downsample
+        
         self.layers = nn.Sequential(
         nn.Conv2d(d_in, 64, 3, padding=1), Block(64, 64),
         nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),

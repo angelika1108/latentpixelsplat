@@ -29,7 +29,7 @@ python3 -m src.main +experiment=acid mode=test wandb.mode=disabled dataset/view_
 # checkpointing.every_n_train_steps=2000
 
 # Train without checkpoint
-python3 -m src.main +experiment=acid data_loader.train.batch_size=1 wandb.mode=offline trainer.val_check_interval=30 optimizer.warm_up_steps=1000 checkpointing.every_n_train_steps=2000
+python3 -m src.main +experiment=acid data_loader.train.batch_size=1 wandb.mode=disabled trainer.val_check_interval=30 optimizer.warm_up_steps=1000 checkpointing.every_n_train_steps=2000
 
 # Train with checkpoint
 python3 -m src.main +experiment=acid data_loader.train.batch_size=1 wandb.mode=offline trainer.val_check_interval=30 optimizer.warm_up_steps=1000 checkpointing.load=pretrained_models/acid_latent_d3_f4_noattn.ckpt checkpointing.every_n_train_steps=2000 trainer.max_steps=350000

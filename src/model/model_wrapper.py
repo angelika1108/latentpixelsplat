@@ -111,6 +111,9 @@ class ModelWrapper(LightningModule):
         self.data_shim = get_data_shim(self.encoder)
         self.losses = nn.ModuleList(losses)
 
+        self.downsample = self.encoder.downsample
+        self.latent_channels = self.decoder.latent_channels
+
         # This is used for testing.
         self.benchmarker = Benchmarker()
 
@@ -122,7 +125,7 @@ class ModelWrapper(LightningModule):
         gaussians = self.encoder(batch["context"], self.global_step, False)
 
         if self.decoder_latent is not None:
-            h_new, w_new = h // 4, w // 4    # downsample
+            h_new, w_new = h // self.downsample, w // self.downsample    # downsample
         else:
             h_new, w_new = h, w
 
@@ -209,7 +212,7 @@ class ModelWrapper(LightningModule):
         t0 = time.time() 
 
         if self.decoder_latent is not None:
-            h_new, w_new = h // 4, w // 4    # downsample
+            h_new, w_new = h // self.downsample, w // self.downsample    # downsample
         else:
             h_new, w_new = h, w
 
@@ -289,7 +292,7 @@ class ModelWrapper(LightningModule):
         )
 
         if self.decoder_latent is not None:
-            h_new, w_new = h // 4, w // 4    # downsample
+            h_new, w_new = h // self.downsample, w // self.downsample    # downsample
         else:
             h_new, w_new = h, w
         
@@ -380,13 +383,6 @@ class ModelWrapper(LightningModule):
             caption=batch["scene"],
         )
 
-        ##################################################################################
-        config_splatting_cuda = "config/model/decoder/splatting_cuda.yaml"
-        with open(config_splatting_cuda, 'r') as file:
-            config = yaml.safe_load(file)
-
-        latent_channels = config['d_latent']
-    
         # Render projections and construct projection image.
         # These are disabled for now, since RE10k scenes are effectively unbounded.
         projections = vcat(
@@ -395,7 +391,7 @@ class ModelWrapper(LightningModule):
                     gaussians_probabilistic,
                     256,
                     extra_label="(Probabilistic)",
-                    latent_channels=latent_channels,
+                    latent_channels=self.latent_channels,
                 )[0]
             ),
             hcat(
@@ -403,7 +399,7 @@ class ModelWrapper(LightningModule):
                     gaussians_deterministic, 
                     256, 
                     extra_label="(Deterministic)",
-                    latent_channels=latent_channels,
+                    latent_channels=self.latent_channels,
                 )[0]
             ),
             align="left",

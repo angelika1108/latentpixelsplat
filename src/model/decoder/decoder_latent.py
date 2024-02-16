@@ -23,6 +23,7 @@ class DecoderLatent(nn.Module):
         self.in_channels = in_channels
         self.give_pre_end = give_pre_end
         self.tanh_out = tanh_out
+        self.upsample = ch_mult[-1]
 
         self.n_embed = n_embed
         self.force_quantize = True
@@ -353,8 +354,9 @@ class Clamp(nn.Module):
 
 # Adapted from https://github.com/madebyollin/taesd
 class DecoderLatentTiny(nn.Module):
-    def __init__(self, d_in=4, d_out=3) -> None:
+    def __init__(self, d_in=4, d_out=3, upsample=4) -> None:
         super().__init__()
+        self.upsample = upsample
 
         self.layers = nn.Sequential(
         Clamp(), nn.Conv2d(d_in, 64, 3, padding=1), nn.ReLU(),
