@@ -96,7 +96,7 @@ def train(cfg_dict: DictConfig):
         max_epochs=-1,
         logger=logger,
         devices=cfg.trainer.devices,
-        # num_nodes=1,
+        num_nodes=1,
         accelerator="gpu",
         strategy="ddp_find_unused_parameters_true"
         if torch.cuda.device_count() > 1

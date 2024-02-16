@@ -2,8 +2,8 @@
 #SBATCH --job-name=med_rnd_s50000_gpu4_debug  # name of job
 #SBATCH -C v100-32g 							   # reserving 16 GB GPUs only if commented
 ##SBATCH --partition=gpu_p2                        # uncomment for gpu_p2 partition gpu_p2
-#SBATCH --ntasks=4					 			   # total number of processes (= number of GPUs here)
-##SBATCH --ntasks-per-node=4
+##SBATCH --ntasks=4					 			   # total number of processes (= number of GPUs here)
+#SBATCH --ntasks-per-node=4
 #SBATCH --nodes=1                                  # reserving 1 node
 #SBATCH --gres=gpu:4                 			   # number of GPUs
 #SBATCH --cpus-per-task=10           			   # number of cores per task (1/4 of the 4-GPUs node)

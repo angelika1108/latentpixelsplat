@@ -137,7 +137,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 nn.ReLU(),
                 nn.Linear(
                     cfg.d_feature,
-                    cfg.num_surfaces * (2 + self.gaussian_adapter.d_in),
+                    cfg.num_surfaces * (self.gaussian_adapter.d_in - 7), # don't predict the first 7 parameters: scales and rotations
                 ),
             )
 
@@ -269,13 +269,13 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         # breakpoint()
         xy_ray, _ = sample_image_grid((h_down, w_down), device)
         xy_ray = rearrange(xy_ray, "h w xy -> (h w) () xy")
-        gaussians = rearrange(
+        gaussians_1 = rearrange(
             self.to_gaussians(features),
             "... (srf c) -> ... srf c",
             srf=self.cfg.num_surfaces,
         )
 
-        offset_xy = gaussians[..., :2].sigmoid()
+        offset_xy = gaussians_1[..., :2].sigmoid()
         pixel_size = 1 / \
             torch.tensor((w_down, h_down), dtype=torch.float32, device=device)
         xy_ray = xy_ray + (offset_xy - 0.5) * pixel_size
@@ -287,7 +287,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             rearrange(xy_ray, "b v r srf xy -> b v r srf () xy"),
             depths,
             self.map_pdf_to_opacity(densities, global_step) / gpp,
-            rearrange(gaussians[..., 2:], "b v r srf c -> b v r srf () c"),
+            rearrange(gaussians_1[..., 2:], "b v r srf c -> b v r srf () c"),
             (h_down, w_down),
         )
 
@@ -298,13 +298,15 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 "... (srf c) -> ... srf c",
                 srf=self.cfg.num_surfaces,
             )
+            gaussians_2 = torch.cat((gaussians_1[..., 2:9], gaussians_2), dim=-1)
+
             gaussians_2 = self.gaussian_adapter.forward(
                 rearrange(context["extrinsics"], "b v i j -> b v () () () i j"),
                 rearrange(context["intrinsics"], "b v i j -> b v () () () i j"),
                 rearrange(xy_ray, "b v r srf xy -> b v r srf () xy"),
                 depths,
                 self.map_pdf_to_opacity(densities, global_step) / gpp,
-                rearrange(gaussians_2[..., 2:], "b v r srf c -> b v r srf () c"),
+                rearrange(gaussians_2, "b v r srf c -> b v r srf () c"),
                 (h_down, w_down),
             )
 
