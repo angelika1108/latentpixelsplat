@@ -216,12 +216,23 @@ class ModelWrapper(LightningModule):
         t0 = time.time()
 
         # Render Gaussians.
-        with self.benchmarker.time("encoder"):
-            gaussians = self.encoder(
-                batch["context"],
-                self.global_step,
-                deterministic=False,
-            )
+
+        if self.d_latent == 3:
+            with self.benchmarker.time("encoder"):
+                gaussians = self.encoder(
+                    batch["context"],
+                    self.global_step,
+                    deterministic=False,
+                )
+        elif self.d_latent == 4:
+            with self.benchmarker.time("encoder"):
+                gaussians, gaussians_2 = self.encoder(
+                    batch["context"],
+                    self.global_step,
+                    deterministic=False,
+                )
+        else:
+            raise ValueError(f"Invalid d_latent: {self.d_latent}")
         
         torch.cuda.synchronize()
         t_encoder = time.time() - t0
@@ -242,12 +253,23 @@ class ModelWrapper(LightningModule):
                 batch["target"]["far"],
                 (h_new, w_new),
             )
-                
+        
+        if self.d_latent == 4:
+            with self.benchmarker.time("decoder", num_calls=v):
+                output_2 = self.decoder.forward(
+                    gaussians_2,
+                    batch["target"]["extrinsics"],
+                    batch["target"]["intrinsics"],
+                    batch["target"]["near"],
+                    batch["target"]["far"],
+                    (h_new, w_new),
+                )
+                output.color = torch.cat((output.color, output_2.color), dim=2)[:, :, :4]
+
         torch.cuda.synchronize()
         t_splatting = time.time() - t0
         torch.cuda.synchronize()
         t0 = time.time() 
-
         # breakpoint()
 
         # Latent decoder
@@ -271,7 +293,6 @@ class ModelWrapper(LightningModule):
         t_decoder_latent = time.time() - t0
         torch.cuda.synchronize()
         t0 = time.time()
-        
         # breakpoint()
 
         # Save images.
@@ -302,11 +323,21 @@ class ModelWrapper(LightningModule):
         # Render Gaussians.
         b, _, _, h, w = batch["target"]["image"].shape
         assert b == 1
-        gaussians_probabilistic = self.encoder(
-            batch["context"],
-            self.global_step,
-            deterministic=False,
-        )
+
+        if self.d_latent == 3:
+            gaussians_probabilistic = self.encoder(
+                batch["context"],
+                self.global_step,
+                deterministic=False,
+            )
+        elif self.d_latent == 4:
+            gaussians_probabilistic, gaussians_probabilistic_2 = self.encoder(
+                batch["context"],
+                self.global_step,
+                deterministic=False,
+            )
+        else:
+            raise ValueError(f"Invalid d_latent: {self.d_latent}")
 
         if self.decoder_latent is not None:
             h_new, w_new = h // self.downsample, w // self.downsample    # downsample
@@ -321,7 +352,18 @@ class ModelWrapper(LightningModule):
             batch["target"]["far"],
             (h_new, w_new),
         )
-        
+
+        if self.d_latent == 4:
+            output_probabilistic_2 = self.decoder.forward(
+                gaussians_probabilistic_2,
+                batch["target"]["extrinsics"],
+                batch["target"]["intrinsics"],
+                batch["target"]["near"],
+                batch["target"]["far"],
+                (h_new, w_new),
+            )
+            output_probabilistic.color = torch.cat((output_probabilistic.color, output_probabilistic_2.color), dim=2)[:, :, :4]
+
         # Latent decoder
         b, v, _, _, _ = output_probabilistic.color.shape
         output_probabilistic.color = rearrange(output_probabilistic.color, "b v c h w -> (b v) c h w")
@@ -341,11 +383,21 @@ class ModelWrapper(LightningModule):
 
         rgb_probabilistic = output_probabilistic.color[0]
 
-        gaussians_deterministic = self.encoder(
-            batch["context"],
-            self.global_step,
-            deterministic=True,
-        )
+        if self.d_latent == 3:
+            gaussians_deterministic = self.encoder(
+                batch["context"],
+                self.global_step,
+                deterministic=True,
+            )
+        elif self.d_latent == 4:
+            gaussians_deterministic, gaussians_deterministic_2 = self.encoder(
+                batch["context"],
+                self.global_step,
+                deterministic=True,
+            )
+        else:
+            raise ValueError(f"Invalid d_latent: {self.d_latent}")
+
         output_deterministic = self.decoder.forward(
             gaussians_deterministic,
             batch["target"]["extrinsics"],
@@ -354,6 +406,17 @@ class ModelWrapper(LightningModule):
             batch["target"]["far"],
             (h_new, w_new),
         )
+
+        if self.d_latent == 4:
+            output_deterministic_2 = self.decoder.forward(
+                gaussians_deterministic_2,
+                batch["target"]["extrinsics"],
+                batch["target"]["intrinsics"],
+                batch["target"]["near"],
+                batch["target"]["far"],
+                (h_new, w_new),
+            )
+            output_deterministic.color = torch.cat((output_deterministic.color, output_deterministic_2.color), dim=2)[:, :, :4]
 
         # Latent decoder
         b, v, _, _, _ = output_deterministic.color.shape
