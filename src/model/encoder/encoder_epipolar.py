@@ -76,7 +76,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
 
         if self.encoder_latent_type is None:
             self.encoder_latent = None
-            self.latent_dim = 3
+            self.d_latent = 3
 
         elif self.encoder_latent_type == "medium":
             config_path = "config/model/encoder/latent/config_vq-f4-noattn.yaml"
@@ -84,7 +84,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 config = yaml.safe_load(file)
             self.encoder_latent = EncoderLatent(
                 **config['model']['params']['ddconfig'], **config['model']['params'])
-            self.latent_dim = config['model']['params']['embed_dim']
+            self.d_latent = config['model']['params']['embed_dim']
 
         elif self.encoder_latent_type == "tiny":
             config_path = "config/model/encoder/latent/latent_tiny.yaml"
@@ -92,7 +92,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 config = yaml.safe_load(file)
             self.encoder_latent = EncoderLatentTiny(
                 d_in=config['d_in'], d_out=config['d_out'])
-            self.latent_dim = config['d_out']
+            self.d_latent = config['d_out']
 
         else:
             raise ValueError(
@@ -123,6 +123,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 nn.Linear(cfg.d_feature, 1),
                 nn.Sigmoid(),
             )
+        
         self.to_gaussians = nn.Sequential(
             nn.ReLU(),
             nn.Linear(
@@ -131,8 +132,17 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             ),
         )
 
+        if self.d_latent == 4:
+            self.to_gaussians_2 = nn.Sequential(
+                nn.ReLU(),
+                nn.Linear(
+                    cfg.d_feature,
+                    cfg.num_surfaces * (2 + self.gaussian_adapter.d_in),
+                ),
+            )
+
         self.high_resolution_skip = nn.Sequential(
-            nn.Conv2d(self.latent_dim, cfg.d_feature, 7, 1, 3),
+            nn.Conv2d(self.d_latent, cfg.d_feature, 7, 1, 3),
             nn.ReLU(),
         )
 
@@ -157,8 +167,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         context: dict,
         global_step: int,
         deterministic: bool = False,
-        visualization_dump: Optional[dict] = None,
-    ) -> Gaussians:
+        visualization_dump: Optional[dict] = None):
 
         torch.cuda.synchronize()
         t0 = time.time()
@@ -232,6 +241,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         t_skip = time.time() - t0
         torch.cuda.synchronize()
         t0 = time.time()
+        # breakpoint()
 
         # Sample depths from the resulting features.
         features = rearrange(features, "b v c h w -> b v (h w) c")
@@ -256,6 +266,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             h_down = h
             w_down = w
 
+        # breakpoint()
         xy_ray, _ = sample_image_grid((h_down, w_down), device)
         xy_ray = rearrange(xy_ray, "h w xy -> (h w) () xy")
         gaussians = rearrange(
@@ -263,6 +274,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             "... (srf c) -> ... srf c",
             srf=self.cfg.num_surfaces,
         )
+
         offset_xy = gaussians[..., :2].sigmoid()
         pixel_size = 1 / \
             torch.tensor((w_down, h_down), dtype=torch.float32, device=device)
@@ -279,11 +291,28 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             (h_down, w_down),
         )
 
+        #######################################################################
+        if self.d_latent == 4:
+            gaussians_2 = rearrange(
+                self.to_gaussians_2(features),
+                "... (srf c) -> ... srf c",
+                srf=self.cfg.num_surfaces,
+            )
+            gaussians_2 = self.gaussian_adapter.forward(
+                rearrange(context["extrinsics"], "b v i j -> b v () () () i j"),
+                rearrange(context["intrinsics"], "b v i j -> b v () () () i j"),
+                rearrange(xy_ray, "b v r srf xy -> b v r srf () xy"),
+                depths,
+                self.map_pdf_to_opacity(densities, global_step) / gpp,
+                rearrange(gaussians_2[..., 2:], "b v r srf c -> b v r srf () c"),
+                (h_down, w_down),
+            )
+
+
         torch.cuda.synchronize()
         t_gaussian_adapter = time.time() - t0
         torch.cuda.synchronize()
         t0 = time.time()
-
         # breakpoint()
 
         # Dump visualizations if needed.

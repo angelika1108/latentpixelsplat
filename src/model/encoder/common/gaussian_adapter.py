@@ -35,14 +35,13 @@ class GaussianAdapter(nn.Module):
         super().__init__()
         self.cfg = cfg
 
-        if cfg.use_sh:
-            self.d_sh = (cfg.sh_degree + 1) ** 2
-        else:
-            self.d_sh = 1
+        # if cfg.use_sh:
+        #     self.d_sh = (cfg.sh_degree + 1) ** 2
+        # else:
+        #     self.d_sh = 1
 
-        self.d_in = 7 + d_latent * self.d_sh
-
-        self.d_latent = d_latent
+        # self.d_in = 7 + d_latent * self.d_sh
+        # self.d_latent = d_latent
 
         # Create a mask for the spherical harmonics coefficients. This ensures that at
         # initialization, the coefficients are biased towards having a large DC
@@ -67,8 +66,9 @@ class GaussianAdapter(nn.Module):
         eps: float = 1e-8,
     ) -> Gaussians:
         device = extrinsics.device
-        # scales, rotations, sh = raw_gaussians.split((3, 4, 3 * self.d_sh), dim=-1)
-        scales, rotations, sh = raw_gaussians.split((3, 4, self.d_latent * self.d_sh), dim=-1)
+
+        scales, rotations, sh = raw_gaussians.split((3, 4, 3 * self.d_sh), dim=-1)
+        # scales, rotations, sh = raw_gaussians.split((3, 4, self.d_latent * self.d_sh), dim=-1)
 
         # Map scale features to valid scale range.
         scale_min = self.cfg.gaussian_scale_min
@@ -83,14 +83,17 @@ class GaussianAdapter(nn.Module):
         rotations = rotations / (rotations.norm(dim=-1, keepdim=True) + eps)
 
         # Apply sigmoid to get valid colors.
-        if self.d_latent == 3:
-            sh = rearrange(sh, "... (xyz d_sh) -> ... xyz d_sh", xyz=3)
-            sh = sh.broadcast_to((*opacities.shape, 3, self.d_sh)) * self.sh_mask
-        elif self.d_latent == 4:
-            sh = rearrange(sh, "... (xyz d_sh) -> ... xyz d_sh", xyz=self.d_latent)
-            sh = sh.broadcast_to((*opacities.shape, self.d_latent, self.d_sh))
-        else:
-            raise ValueError(f"Invalid d_latent: {self.d_latent}")
+        sh = rearrange(sh, "... (xyz d_sh) -> ... xyz d_sh", xyz=3)
+        sh = sh.broadcast_to((*opacities.shape, 3, self.d_sh)) * self.sh_mask
+
+        # if self.d_latent == 3:
+        #     sh = rearrange(sh, "... (xyz d_sh) -> ... xyz d_sh", xyz=3)
+        #     sh = sh.broadcast_to((*opacities.shape, 3, self.d_sh)) * self.sh_mask
+        # elif self.d_latent == 4:
+        #     sh = rearrange(sh, "... (xyz d_sh) -> ... xyz d_sh", xyz=self.d_latent)
+        #     sh = sh.broadcast_to((*opacities.shape, self.d_latent, self.d_sh))
+        # else:
+        #     raise ValueError(f"Invalid d_latent: {self.d_latent}")
         
         # Create world-space covariance matrices.
         covariances = build_covariance(scales, rotations)
@@ -125,10 +128,10 @@ class GaussianAdapter(nn.Module):
         )
         return xy_multipliers.sum(dim=-1)
 
-    # @property
-    # def d_sh(self) -> int:
-    #     return (self.cfg.sh_degree + 1) ** 2
+    @property
+    def d_sh(self) -> int:
+        return (self.cfg.sh_degree + 1) ** 2
 
-    # @property
-    # def d_in(self) -> int:
-    #     return 7 + 3 * self.d_sh
+    @property
+    def d_in(self) -> int:
+        return 7 + 3 * self.d_sh

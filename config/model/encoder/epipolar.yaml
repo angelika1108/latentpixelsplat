@@ -19,7 +19,7 @@ gaussian_adapter:
   gaussian_scale_min: 0.5
   gaussian_scale_max: 15.0
   sh_degree: 4
-  use_sh: false
+  use_sh: true
 
 d_feature: 128
 
@@ -53,5 +53,5 @@ use_epipolar_transformer: true
 
 use_transmittance: false
 
-encoder_latent_type: tiny
-d_latent: 4
+encoder_latent_type: medium
+d_latent: 3

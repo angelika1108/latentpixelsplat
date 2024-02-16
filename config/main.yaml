@@ -58,5 +58,5 @@ trainer:
   gradient_clip_val: 0.5
   devices: 1
 
-decoder_latent_type: tiny
+decoder_latent_type: medium
 freeze_latent: true
