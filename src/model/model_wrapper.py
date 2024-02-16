@@ -112,7 +112,7 @@ class ModelWrapper(LightningModule):
         self.losses = nn.ModuleList(losses)
 
         self.downsample = self.encoder.downsample
-        self.latent_channels = self.decoder.latent_channels
+        self.d_latent = self.encoder.d_latent
 
         # This is used for testing.
         self.benchmarker = Benchmarker()
@@ -122,7 +122,12 @@ class ModelWrapper(LightningModule):
         _, _, _, h, w = batch["target"]["image"].shape
         
         # Run the model.
-        gaussians = self.encoder(batch["context"], self.global_step, False)
+        if self.d_latent == 3:
+            gaussians = self.encoder(batch["context"], self.global_step, False)
+        elif self.d_latent == 4:
+            gaussians, gaussians_2 = self.encoder(batch["context"], self.global_step, True)
+        else:
+            raise ValueError(f"Invalid d_latent: {self.d_latent}")
 
         if self.decoder_latent is not None:
             h_new, w_new = h // self.downsample, w // self.downsample    # downsample
@@ -138,6 +143,18 @@ class ModelWrapper(LightningModule):
             (h_new, w_new),
             depth_mode=self.train_cfg.depth_mode,
         )
+
+        if self.d_latent == 4:
+            output_2 = self.decoder.forward(
+                gaussians_2,
+                batch["target"]["extrinsics"],
+                batch["target"]["intrinsics"],
+                batch["target"]["near"],
+                batch["target"]["far"],
+                (h_new, w_new),
+                depth_mode=self.train_cfg.depth_mode,
+            )
+            output.color = torch.cat((output.color, output_2.color), dim=2)[:, :, :4]
 
         # Latent decoder
         b, v, _, _, _ = output.color.shape
@@ -391,7 +408,7 @@ class ModelWrapper(LightningModule):
                     gaussians_probabilistic,
                     256,
                     extra_label="(Probabilistic)",
-                    latent_channels=self.latent_channels,
+                    latent_channels=self.d_latent,
                 )[0]
             ),
             hcat(
@@ -399,7 +416,7 @@ class ModelWrapper(LightningModule):
                     gaussians_deterministic, 
                     256, 
                     extra_label="(Deterministic)",
-                    latent_channels=self.latent_channels,
+                    latent_channels=self.d_latent,
                 )[0]
             ),
             align="left",

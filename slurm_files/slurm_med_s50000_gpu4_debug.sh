@@ -11,11 +11,11 @@
 #SBATCH --hint=nomultithread         			   # hyperthreading is deactivated
 #SBATCH --output=slurm_logs/med_rnd_s50000_gpu4_debug%j.output   # name of output file
 #SBATCH --error=slurm_logs/med_rnd_s50000_gpu4_debug%j.error     # name of error file (here, in common with the output file)
-##SBATCH --time=20:00:00             			   # maximum execution time requested (HH:MM:SS)
-#SBATCH --time=00:10:00             			   # maximum execution time requested (HH:MM:SS)
+##SBATCH --time=00:30:00             			   # maximum execution time requested (HH:MM:SS)
+##SBATCH --time=00:10:00             			   # maximum execution time requested (HH:MM:SS)
 ##SBATCH --qos=qos_gpu-t4                          # for running (max 100h)
-##SBATCH --qos=qos_gpu-t3                          # for running (max 20h)
-#SBATCH --qos=qos_gpu-dev                          # for veryfuing that the code is running.
+#SBATCH --qos=qos_gpu-t3                          # for running (max 20h)
+##SBATCH --qos=qos_gpu-dev                          # for veryfuing that the code is running.
 
 
 EXP_NAME="med_rnd_s50000_gpu4_debug"

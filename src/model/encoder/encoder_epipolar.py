@@ -338,24 +338,64 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             else 1
         )
 
-        return Gaussians(
-            rearrange(
-                gaussians.means,
-                "b v r srf spp xyz -> b (v r srf spp) xyz",
-            ),
-            rearrange(
-                gaussians.covariances,
-                "b v r srf spp i j -> b (v r srf spp) i j",
-            ),
-            rearrange(
-                gaussians.harmonics,
-                "b v r srf spp c d_sh -> b (v r srf spp) c d_sh",
-            ),
-            rearrange(
-                opacity_multiplier * gaussians.opacities,
-                "b v r srf spp -> b (v r srf spp)",
-            ),
-        )
+        if self.d_latent == 3:
+            return Gaussians(
+                rearrange(
+                    gaussians.means,
+                    "b v r srf spp xyz -> b (v r srf spp) xyz",
+                ),
+                rearrange(
+                    gaussians.covariances,
+                    "b v r srf spp i j -> b (v r srf spp) i j",
+                ),
+                rearrange(
+                    gaussians.harmonics,
+                    "b v r srf spp c d_sh -> b (v r srf spp) c d_sh",
+                ),
+                rearrange(
+                    opacity_multiplier * gaussians.opacities,
+                    "b v r srf spp -> b (v r srf spp)",
+                ),
+            )
+        elif self.d_latent == 4:
+            return Gaussians(
+                rearrange(
+                    gaussians.means,
+                    "b v r srf spp xyz -> b (v r srf spp) xyz",
+                ),
+                rearrange(
+                    gaussians.covariances,
+                    "b v r srf spp i j -> b (v r srf spp) i j",
+                ),
+                rearrange(
+                    gaussians.harmonics,
+                    "b v r srf spp c d_sh -> b (v r srf spp) c d_sh",
+                ),
+                rearrange(
+                    opacity_multiplier * gaussians.opacities,
+                    "b v r srf spp -> b (v r srf spp)",
+                ),
+            ), Gaussians(
+                    rearrange(
+                        gaussians.means,
+                        "b v r srf spp xyz -> b (v r srf spp) xyz",
+                    ),
+                    rearrange(
+                        gaussians.covariances,
+                        "b v r srf spp i j -> b (v r srf spp) i j",
+                    ),
+                    rearrange(
+                        gaussians_2.harmonics,
+                        "b v r srf spp c d_sh -> b (v r srf spp) c d_sh",
+                    ),
+                    rearrange(
+                        opacity_multiplier * gaussians.opacities,
+                        "b v r srf spp -> b (v r srf spp)",
+                    ),
+                )
+        else:
+           raise ValueError(f"Invalid d_latent: {self.d_latent}")             
+        
 
     def get_data_shim(self) -> DataShim:
         def data_shim(batch: BatchedExample) -> BatchedExample:
