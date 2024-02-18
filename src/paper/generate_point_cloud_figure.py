@@ -62,12 +62,6 @@ def generate_point_cloud_figure(cfg_dict):
     set_cfg(cfg_dict)
     torch.manual_seed(cfg_dict.seed)
     device = torch.device("cuda:0")
-    
-    config_splatting_cuda = "config/model/decoder/splatting_cuda.yaml"
-    with open(config_splatting_cuda, 'r') as file:
-        config = yaml.safe_load(file)
-
-    latent_channels = config['d_latent']
 
     # Prepare the checkpoint for loading.
     checkpoint_path = update_checkpoint_path(cfg.checkpointing.load, cfg.wandb)
@@ -154,7 +148,7 @@ def generate_point_cloud_figure(cfg_dict):
                 "far": ones * far,
                 "image_shape": (1024, 1024),
                 "background_color": torch.zeros(
-                    (1, latent_channels), dtype=torch.float32, device=device
+                    (1, 3), dtype=torch.float32, device=device
                 ),
                 "gaussian_means": trim(gaussians.means),
                 "gaussian_covariances": trim(gaussians.covariances),

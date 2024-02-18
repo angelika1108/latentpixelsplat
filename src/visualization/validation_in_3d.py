@@ -73,13 +73,13 @@ def render_projections(
             near,
             far,
             (resolution, resolution),
-            torch.zeros((b, latent_channels), dtype=torch.float32, device=device),  # background_color
+            torch.zeros((b, 3), dtype=torch.float32, device=device),  # background_color
             gaussians.means,
             gaussians.covariances,
             gaussians.harmonics,
             gaussians.opacities,
             fov_degrees=10.0,
-            latent_channels=latent_channels,
+            latent_channels=3,
         )
 
         if draw_label:
