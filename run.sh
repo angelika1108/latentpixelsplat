@@ -37,6 +37,9 @@ checkpointing.load=pretrained_models/acid_latent_d3_f4_noattn.ckpt
 checkpointing.every_n_train_steps=2000 trainer.max_steps=350000
 
 
+# Tiny random
+python3 -m src.main +experiment=acid data_loader.train.batch_size=1 wandb.mode=offline checkpointing.every_n_train_steps=10000
+
 
 
 
