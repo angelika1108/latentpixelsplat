@@ -53,5 +53,5 @@ use_epipolar_transformer: true
 
 use_transmittance: false
 
-encoder_latent_type: medium
-d_latent: 3
+encoder_latent_type: tiny
+d_latent: 4
