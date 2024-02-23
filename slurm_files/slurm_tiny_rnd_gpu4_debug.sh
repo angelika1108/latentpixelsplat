@@ -4,7 +4,7 @@
 ##SBATCH --partition=gpu_p2                        # uncomment for gpu_p2 partition gpu_p2
 ##SBATCH --ntasks=4					 			   # total number of processes (= number of GPUs here)
 #SBATCH --ntasks-per-node=4
-#SBATCH --nodes=1                                  # reserving 1 node
+#SBATCH --nodes=4                                  # nb reserved nodes
 #SBATCH --gres=gpu:4                 			   # number of GPUs
 #SBATCH --cpus-per-task=10           			   # number of cores per task (1/4 of the 4-GPUs node)
 # /!\ Caution, "multithread" in Slurm vocabulary refers to hyperthreading.
@@ -37,5 +37,5 @@ set -x
 # python -m torch.distributed.launch --nproc_per_node=4 --use_env main.py \
 #   --output_dir "${OUTPUT_DUMP}" --data_path "/gpfsdsscratch/acid/" \
 # python3 -m src.main +experiment=acid data_loader.train.batch_size=1 wandb.mode=offline checkpointing.every_n_train_steps=10000
-python3 -m src.main +experiment=acid trainer.devices=4 data_loader.train.batch_size=1 checkpointing.every_n_train_steps=10000
+python3 -m src.main +experiment=acid trainer.devices=4 trainer.num_nodes=4 data_loader.train.batch_size=1 checkpointing.every_n_train_steps=10000
 
