@@ -31,6 +31,7 @@ class TrainerCfg:
     val_check_interval: int | float | None
     gradient_clip_val: int | float | None
     devices: int
+    accumulate_grad_batches: int
 
 
 @dataclass

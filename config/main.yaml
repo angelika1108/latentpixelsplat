@@ -57,6 +57,7 @@ trainer:
   val_check_interval: 250
   gradient_clip_val: 0.5
   devices: 1
+  accumulate_grad_batches: 1
 
 decoder_latent_type: tiny
 freeze_latent: false
