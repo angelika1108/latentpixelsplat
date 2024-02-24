@@ -6,7 +6,7 @@ defaults:
   - loss: [mse, density]
 
 wandb:
-  project: pixelsplat
+  project: latentpixelsplat
   entity: your-entity-here
   name: placeholder
   mode: disabled
