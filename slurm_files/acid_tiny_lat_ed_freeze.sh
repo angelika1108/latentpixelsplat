@@ -17,7 +17,6 @@
 ##SBATCH --qos=qos_gpu-t3                          # for running (max 20h)
 ##SBATCH --qos=qos_gpu-dev                          # for veryfuing that the code is running.
 
-
 EXP_NAME="acid_tiny_lat_ed_freeze"
 RUN_DIR="outputs/${EXP_NAME}"
 
