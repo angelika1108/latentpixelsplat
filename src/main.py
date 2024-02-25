@@ -167,7 +167,7 @@ def train(cfg_dict: DictConfig):
         if cfg.load_pretrained_encoder == 'encoder_latent':
 
             if encoder.encoder_latent_type  == 'tiny':
-                encoder_init_path = "pretrained_models/encoder_init_tiny.pth"
+                encoder_init_path = "pretrained_models/encoder_latent_tiny.pth"
                 encoder_init = torch.load(encoder_init_path)
                 model_wrapper.encoder.load_state_dict(encoder_init)
             else:
