@@ -17,8 +17,8 @@
 ##SBATCH --qos=qos_gpu-t3                          # for running (max 20h)
 ##SBATCH --qos=qos_gpu-dev                          # for veryfuing that the code is running.
 
-EXP_NAME='acid_tiny_lat_ed'
-RUN_DIR='outputs/acid_tiny_lat_ed'
+EXP_NAME="acid_tiny_lat_ed"
+RUN_DIR="outputs/${EXP_NAME}"
 
 # Cleans out the modules loaded in interactive and inherited by default
 module purge
@@ -35,4 +35,4 @@ set -x
 # python -m torch.distributed.launch --nproc_per_node=4 --use_env main.py \
 #   --output_dir "${OUTPUT_DUMP}" --data_path "/gpfsdsscratch/acid/" \
 # python3 -m src.main +experiment=acid data_loader.train.batch_size=1 wandb.mode=offline checkpointing.every_n_train_steps=10000
-srun python3 -m src.main +experiment=acid exp_name=EXP_NAME hydra.run.dir=RUN_DIR trainer.devices=4 trainer.num_nodes=1 data_loader.train.batch_size=1 wandb.mode=offline load_pretrained_encoder=encoder_latent load_pretrained_latent_decoder=true checkpointing.every_n_train_steps=10000
+srun python3 -m src.main +experiment=acid exp_name=${EXP_NAME} hydra.run.dir=${RUN_DIR} trainer.devices=4 trainer.num_nodes=1 data_loader.train.batch_size=1 wandb.mode=offline load_pretrained_encoder=encoder_latent load_pretrained_latent_decoder=true checkpointing.every_n_train_steps=10000
