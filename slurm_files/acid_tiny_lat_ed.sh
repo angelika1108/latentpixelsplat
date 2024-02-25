@@ -11,8 +11,8 @@
 #SBATCH --hint=nomultithread         			   # hyperthreading is deactivated
 #SBATCH --time=99:00:00             			   # maximum execution time requested (HH:MM:SS)
 ##SBATCH --time=00:10:00             			   # maximum execution time requested (HH:MM:SS)
-#SBATCH --output=slurm_logs/acid_tiny_lat_ed%j.output   # name of output file
-#SBATCH --error=slurm_logs/acid_tiny_lat_ed%j.error     # name of error file (here, in common with the output file)
+#SBATCH --output=slurm_logs/acid_tiny_lat_ed_%j.output   # name of output file
+#SBATCH --error=slurm_logs/acid_tiny_lat_ed_%j.error     # name of error file (here, in common with the output file)
 #SBATCH --qos=qos_gpu-t4                          # for running (max 100h)
 ##SBATCH --qos=qos_gpu-t3                          # for running (max 20h)
 ##SBATCH --qos=qos_gpu-dev                          # for veryfuing that the code is running.
@@ -35,4 +35,4 @@ set -x
 # python -m torch.distributed.launch --nproc_per_node=4 --use_env main.py \
 #   --output_dir "${OUTPUT_DUMP}" --data_path "/gpfsdsscratch/acid/" \
 # python3 -m src.main +experiment=acid data_loader.train.batch_size=1 wandb.mode=offline checkpointing.every_n_train_steps=10000
-srun python3 -m src.main +experiment=acid exp_name=EXP_NAME hydra.run.dir=RUN_DIR data_loader.train.batch_size=1 wandb.mode=offline load_pretrained_encoder=encoder_latent load_pretrained_latent_decoder=true checkpointing.every_n_train_steps=10000
+srun python3 -m src.main +experiment=acid exp_name=EXP_NAME hydra.run.dir=RUN_DIR trainer.devices=4 trainer.num_nodes=1 data_loader.train.batch_size=1 wandb.mode=offline load_pretrained_encoder=encoder_latent load_pretrained_latent_decoder=true checkpointing.every_n_train_steps=10000

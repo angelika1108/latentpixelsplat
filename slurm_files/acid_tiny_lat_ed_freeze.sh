@@ -36,4 +36,4 @@ set -x
 # python -m torch.distributed.launch --nproc_per_node=4 --use_env main.py \
 #   --output_dir "${OUTPUT_DUMP}" --data_path "/gpfsdsscratch/acid/" \
 # python3 -m src.main +experiment=acid data_loader.train.batch_size=1 wandb.mode=offline checkpointing.every_n_train_steps=10000
-srun python3 -m src.main +experiment=acid exp_name=EXP_NAME hydra.run.dir=RUN_DIR data_loader.train.batch_size=1 wandb.mode=offline freeze_latent=true load_pretrained_encoder=encoder_latent load_pretrained_latent_decoder=true checkpointing.every_n_train_steps=10000
+srun python3 -m src.main +experiment=acid exp_name=EXP_NAME hydra.run.dir=RUN_DIR trainer.devices=4 trainer.num_nodes=1 data_loader.train.batch_size=1 wandb.mode=offline freeze_latent=true load_pretrained_encoder=encoder_latent load_pretrained_latent_decoder=true checkpointing.every_n_train_steps=10000
