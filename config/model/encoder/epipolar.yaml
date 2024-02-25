@@ -39,7 +39,7 @@ epipolar_transformer:
   d_dot: 128
   d_mlp: 256
   downscale: 4
-  upscale: 4
+  upscale: 0
 
 visualizer:
   num_samples: 8

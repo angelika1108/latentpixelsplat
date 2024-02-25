@@ -64,5 +64,5 @@ trainer:
 
 decoder_latent_type: tiny
 freeze_latent: false
-load_pretrained_encoder: null   # 'encoder_latent', 'encoder', 'encoder_and_encoder_latent' or null
+load_pretrained_encoder: null   # 'encoder_latent', 'encoder_and_encoder_latent' or null
 load_pretrained_latent_decoder: false

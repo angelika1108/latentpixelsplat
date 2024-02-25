@@ -74,8 +74,8 @@ class EncoderLatent(nn.Module):
 
     def forward(self, x):
 
-        torch.cuda.synchronize()
-        t0 = time.time()
+        # torch.cuda.synchronize()
+        # t0 = time.time()
 
         # downsampling
         hs = [self.conv_in(x)]
@@ -88,10 +88,10 @@ class EncoderLatent(nn.Module):
             if i_level != self.num_resolutions-1:
                 hs.append(self.down[i_level].downsample(hs[-1]))
         
-        torch.cuda.synchronize()
-        t_downsample = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
+        # torch.cuda.synchronize()
+        # t_downsample = time.time() - t0
+        # torch.cuda.synchronize()
+        # t0 = time.time()
 
         # middle
         h = hs[-1]
@@ -99,10 +99,10 @@ class EncoderLatent(nn.Module):
         h = self.mid.attn_1(h)
         h = self.mid.block_2(h)
 
-        torch.cuda.synchronize()
-        t_middle = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
+        # torch.cuda.synchronize()
+        # t_middle = time.time() - t0
+        # torch.cuda.synchronize()
+        # t0 = time.time()
 
         # end
         h = self.norm_out(h)
@@ -111,10 +111,10 @@ class EncoderLatent(nn.Module):
 
         h = self.quant_conv(h)
 
-        torch.cuda.synchronize()
-        t_end = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
+        # torch.cuda.synchronize()
+        # t_end = time.time() - t0
+        # torch.cuda.synchronize()
+        # t0 = time.time()
         # breakpoint() # 22 layers   7+15
 
         return h

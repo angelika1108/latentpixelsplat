@@ -212,8 +212,8 @@ class ModelWrapper(LightningModule):
         if batch_idx % 100 == 0:
             print(f"Test step {batch_idx:0>6}.")
 
-        torch.cuda.synchronize()
-        t0 = time.time()
+        # torch.cuda.synchronize()
+        # t0 = time.time()
 
         # Render Gaussians.
 
@@ -234,10 +234,10 @@ class ModelWrapper(LightningModule):
         else:
             raise ValueError(f"Invalid d_latent: {self.d_latent}")
         
-        torch.cuda.synchronize()
-        t_encoder = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time() 
+        # torch.cuda.synchronize()
+        # t_encoder = time.time() - t0
+        # torch.cuda.synchronize()
+        # t0 = time.time() 
 
         if self.decoder_latent is not None:
             h_new, w_new = h // self.downsample, w // self.downsample    # downsample
@@ -266,10 +266,10 @@ class ModelWrapper(LightningModule):
                 )
                 output.color = torch.cat((output.color, output_2.color), dim=2)[:, :, :4]
 
-        torch.cuda.synchronize()
-        t_splatting = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time() 
+        # torch.cuda.synchronize()
+        # t_splatting = time.time() - t0
+        # torch.cuda.synchronize()
+        # t0 = time.time() 
         # breakpoint()
 
         # Latent decoder
@@ -289,10 +289,10 @@ class ModelWrapper(LightningModule):
         else: # No latent decoder
             output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
         
-        torch.cuda.synchronize()
-        t_decoder_latent = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
+        # torch.cuda.synchronize()
+        # t_decoder_latent = time.time() - t0
+        # torch.cuda.synchronize()
+        # t0 = time.time()
         # breakpoint()
 
         # Save images.

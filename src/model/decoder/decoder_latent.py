@@ -91,18 +91,18 @@ class DecoderLatent(nn.Module):
         assert z.shape[1:] == self.z_shape[1:]
         self.last_z_shape = z.shape
 
-        torch.cuda.synchronize()
-        t0 = time.time()
+        # torch.cuda.synchronize()
+        # t0 = time.time()
 
         if self.force_quantize:
             z, _, _ = self.quantize(z)
         else:
             z = z
 
-        torch.cuda.synchronize()
-        t_quantize = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
+        # torch.cuda.synchronize()
+        # t_quantize = time.time() - t0
+        # torch.cuda.synchronize()
+        # t0 = time.time()
 
         z = self.post_quant_conv(z)
 
@@ -114,10 +114,10 @@ class DecoderLatent(nn.Module):
         h = self.mid.attn_1(h)
         h = self.mid.block_2(h)
 
-        torch.cuda.synchronize()
-        t_middle = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
+        # torch.cuda.synchronize()
+        # t_middle = time.time() - t0
+        # torch.cuda.synchronize()
+        # t0 = time.time()
 
         # upsampling
         for i_level in reversed(range(self.num_resolutions)):
@@ -128,10 +128,10 @@ class DecoderLatent(nn.Module):
             if i_level != 0:
                 h = self.up[i_level].upsample(h)
         
-        torch.cuda.synchronize()
-        t_upsample = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
+        # torch.cuda.synchronize()
+        # t_upsample = time.time() - t0
+        # torch.cuda.synchronize()
+        # t0 = time.time()
 
         # end
         if self.give_pre_end:
@@ -143,10 +143,10 @@ class DecoderLatent(nn.Module):
         if self.tanh_out:
             h = torch.tanh(h)
         
-        torch.cuda.synchronize()
-        t_end = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
+        # torch.cuda.synchronize()
+        # t_end = time.time() - t0
+        # torch.cuda.synchronize()
+        # t0 = time.time()
         # breakpoint() # 29 layers   7+22
 
         return h
