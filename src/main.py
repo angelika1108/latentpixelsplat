@@ -164,10 +164,9 @@ def train(cfg_dict: DictConfig):
 
         elif cfg.load_pretrained_encoder == 'encoder_and_encoder_latent':
             if encoder.encoder_latent_type  == 'tiny':
-                raise ValueError(f"Not implemented yet: {cfg.load_pretrained_encoder}")
-                # encoder_init_path = "pretrained_models/encoder_and_encoder_latent_tiny.pth"
-                # encoder_init = torch.load(encoder_init_path)
-                # model_wrapper.encoder.load_state_dict(encoder_init)
+                encoder_init_path = "pretrained_models/encoder_and_encoder_latent_tiny.pth"
+                encoder_init = torch.load(encoder_init_path)
+                model_wrapper.encoder.load_state_dict(encoder_init)
             else:
                 raise ValueError(f"Unknown encoder_latent_type or not implemented yet: {encoder.encoder_latent_type }")
         

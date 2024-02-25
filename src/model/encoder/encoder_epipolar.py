@@ -137,7 +137,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 nn.ReLU(),
                 nn.Linear(
                     cfg.d_feature,
-                    cfg.num_surfaces * (self.gaussian_adapter.d_in - 7), # don't predict the first 7 parameters: scales and rotations
+                    cfg.num_surfaces * (self.gaussian_adapter.d_in - 7), # don't predict the first 7 parameters (scales and rotations) and the offset_xy, in total 9 parameters
                 ),
             )
 

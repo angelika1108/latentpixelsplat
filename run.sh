@@ -42,6 +42,9 @@ python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' 
 # model.encoder.epipolar_transformer.upscale=4
 
 
+# Tiny load encoder and latent encoder and decoder + no freeze
+python3 -m src.main +experiment=acid exp_name='acid_tiny_enc_lat_ed' hydra.run.dir='outputs/acid_tiny_enc_lat_ed' data_loader.train.batch_size=1 load_pretrained_encoder=encoder_and_encoder_latent load_pretrained_latent_decoder=true checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000
+
 # Tiny load latent encoder and decoder + no freeze
 python3 -m src.main +experiment=acid exp_name='acid_tiny_lat_ed' hydra.run.dir='outputs/acid_tiny_lat_ed' data_loader.train.batch_size=1 load_pretrained_encoder=encoder_latent load_pretrained_latent_decoder=true checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000
 
