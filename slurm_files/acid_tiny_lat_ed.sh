@@ -18,7 +18,7 @@
 ##SBATCH --qos=qos_gpu-dev                          # for veryfuing that the code is running.
 
 EXP_NAME='acid_tiny_lat_ed'
-RUN_DIR='outputs/${EXP_NAME}'
+RUN_DIR='outputs/acid_tiny_lat_ed'
 
 # Cleans out the modules loaded in interactive and inherited by default
 module purge
