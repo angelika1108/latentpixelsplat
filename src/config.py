@@ -37,6 +37,7 @@ class TrainerCfg:
 
 @dataclass
 class RootCfg:
+    exp_name: str
     wandb: dict
     mode: Literal["train", "test"]
     dataset: DatasetCfg
@@ -51,6 +52,8 @@ class RootCfg:
     seed: int
     decoder_latent_type: str | None
     freeze_latent: bool
+    load_pretrained_encoder: str | None
+    load_pretrained_latent_decoder: bool
 
 
 TYPE_HOOKS = {

@@ -3,6 +3,7 @@ from pathlib import Path
 import yaml
 import sys
 sys.path.append('../')
+import shutil
 
 import hydra
 import torch
@@ -51,6 +52,18 @@ def train(cfg_dict: DictConfig):
     output_dir = Path(
         hydra.core.hydra_config.HydraConfig.get()["runtime"]["output_dir"]
     )
+
+    parent_dir = output_dir.parent
+    exp_name=cfg.exp_name
+
+    # new_last_folder = last_folder + '_' + exp_name
+    new_path = parent_dir / exp_name
+
+    if new_path.exists():
+        shutil.rmtree(str(new_path))
+    
+    output_dir = output_dir.rename(new_path)
+
     print(cyan(f"Saving outputs to {output_dir}."))
     latest_run = output_dir.parents[1] / "latest-run"
     os.system(f"rm {latest_run}")
@@ -150,6 +163,42 @@ def train(cfg_dict: DictConfig):
     )
     
 
+    if cfg.load_pretrained_encoder is not None:
+        if cfg.load_pretrained_encoder == 'encoder_latent':
+
+            if encoder.encoder_latent_type  == 'tiny':
+                encoder_init_path = "pretrained_models/encoder_init_tiny.pth"
+                encoder_init = torch.load(encoder_init_path)
+                model_wrapper.encoder.load_state_dict(encoder_init)
+            else:
+                raise ValueError(f"Unknown encoder_latent_type or not implemented yet: {encoder.encoder_latent_type }")
+
+        elif cfg.load_pretrained_encoder == 'encoder_and_encoder_latent':
+            raise ValueError(f"Not implemented yet: {cfg.load_pretrained_encoder}")
+        
+        elif cfg.load_pretrained_encoder == 'encoder':
+            raise ValueError(f"Not implemented yet: {cfg.load_pretrained_encoder}")
+        
+        else:
+            raise ValueError(f"Unknown load_pretrained_encoder: {cfg.load_pretrained_encoder}")
+    
+
+    if cfg.load_pretrained_latent_decoder:
+        if cfg.decoder_latent_type == 'tiny':
+            decoder_latent_init_path = "pretrained_models/decoder_latent_tiny.pth"
+            decoder_latent_init = torch.load(decoder_latent_init_path)
+            model_wrapper.decoder_latent.load_state_dict(decoder_latent_init)
+        else:
+            raise ValueError(f"Unknown decoder_latent_type or not implemented yet: {decoder_latent_type}")
+
+    # breakpoint()
+    # len(model_wrapper.encoder.state_dict().keys())  # 632
+    # len(model_wrapper.decoder.state_dict().keys())  # 0
+    # len(model_wrapper.decoder_latent.state_dict().keys()) # 48
+    # torch.save(model_wrapper.encoder.state_dict(), 'encoder_init.pth')
+    # torch.save(model_wrapper.decoder_latent.state_dict(), 'decoder_latent_init.pth')
+
+
     if cfg.freeze_latent and decoder_latent_type is not None:
         print('==> Freeze latent encoder and decoder')
         # model_wrapper.decoder_latent.state_dict().keys()
@@ -164,7 +213,8 @@ def train(cfg_dict: DictConfig):
     
     if cfg.mode == "train":
         trainer.fit(model_wrapper, datamodule=data_module,
-                    ckpt_path=checkpoint_path)
+                    ckpt_path=checkpoint_path,
+                    )
     else:
         trainer.test(
             model_wrapper,
