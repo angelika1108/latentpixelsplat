@@ -53,17 +53,6 @@ def train(cfg_dict: DictConfig):
         hydra.core.hydra_config.HydraConfig.get()["runtime"]["output_dir"]
     )
 
-    parent_dir = output_dir.parent
-    exp_name=cfg.exp_name
-
-    # new_last_folder = last_folder + '_' + exp_name
-    new_path = parent_dir / exp_name
-
-    if new_path.exists():
-        shutil.rmtree(str(new_path))
-    
-    output_dir = output_dir.rename(new_path)
-
     print(cyan(f"Saving outputs to {output_dir}."))
     latest_run = output_dir.parents[1] / "latest-run"
     os.system(f"rm {latest_run}")
