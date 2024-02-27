@@ -2,6 +2,8 @@
 
 This is the code for **pixelSplat: 3D Gaussian Splats from Image Pairs for Scalable Generalizable 3D Reconstruction** by David Charatan, Sizhe Li, Andrea Tagliasacchi, and Vincent Sitzmann.
 
+Check out the [project website here](https://dcharatan.github.io/pixelsplat). We will be presenting pixelSplat at CVPR 2024 in Seattle.
+
 https://github.com/dcharatan/pixelsplat/assets/13124225/de90101e-1bb5-42e4-8c5b-35922cae8f64
 
 ## Installation
@@ -11,6 +13,8 @@ To get started, create a virtual environment using Python 3.10+:
 ```bash
 python3.10 -m venv venv
 source venv/bin/activate
+# Install these first! Also, make sure you have python3.11-dev installed if using Ubuntu.
+pip install wheel torch torchvision torchaudio
 pip install -r requirements.txt
 ```
 
@@ -28,13 +32,14 @@ The Gaussian splatting CUDA code (`diff-gaussian-rasterization`) must be compile
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
-- Install CUDA Toolkit 12.1 on your system. One approach (*try this at your own risk!*) is to install a second CUDA Toolkit version using the `runfile (local)` option [here](https://developer.nvidia.com/cuda-12-1-0-download-archive?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=22.04&target_type=runfile_local). When you run the installer, disable the options that install GPU drivers and update the default CUDA symlinks. If you do this, you can point your system to CUDA 12.1 during installation as follows:
+- Install CUDA Toolkit 12.1 on your system. One approach (_try this at your own risk!_) is to install a second CUDA Toolkit version using the `runfile (local)` option [here](https://developer.nvidia.com/cuda-12-1-0-download-archive?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=22.04&target_type=runfile_local). When you run the installer, disable the options that install GPU drivers and update the default CUDA symlinks. If you do this, you can point your system to CUDA 12.1 during installation as follows:
 
 ```bash
 LD_LIBRARY_PATH=/usr/local/cuda-12.1/lib64 pip install -r requirements.txt
 # If everything else was installed but you're missing diff-gaussian-rasterization, do:
 LD_LIBRARY_PATH=/usr/local/cuda-12.1/lib64 pip install git+https://github.com/dcharatan/diff-gaussian-rasterization-modified
 ```
+
 </details>
 
 ## Acquiring Datasets
@@ -70,8 +75,14 @@ Our code supports multi-GPU training. The above batch size is the per-GPU batch 
 To render frames from an existing checkpoint, run the following:
 
 ```bash
-python3 -m src.main +experiment=re10k mode=test dataset/view_sampler=evaluation checkpointing.load=checkpoints/re10k.ckpt
+# Real Estate 10k
+python3 -m src.main +experiment=re10k mode=test dataset/view_sampler=evaluation dataset.view_sampler.index_path=assets/evaluation_index_re10k.json checkpointing.load=checkpoints/re10k.ckpt
+
+# ACID
+python3 -m src.main +experiment=acid mode=test dataset/view_sampler=evaluation dataset.view_sampler.index_path=assets/evaluation_index_acid.json checkpointing.load=checkpoints/acid.ckpt
 ```
+
+Note that you can also use the evaluation indices that end with `_video` (in `/assets`) to render the videos shown on the website.
 
 ### Ablations
 
@@ -94,6 +105,13 @@ Our extrinsics are OpenCV-style camera-to-world matrices. This means that +Z is 
 ## Figure Generation Code
 
 We've included the scripts that generate tables and figures in the paper. Note that since these are one-offs, they might have to be modified to be run.
+
+## Notes on Bugs
+
+Since the original release of the pixelSplat codebase, the following bugs have been identified:
+
+- The LPIPS loss was using the wrong input range (0 to 1 instead of -1 to 1). Results should be slightly better with this fixed. Thank you to Katja Schwarz for finding this bug!
+- The view sampler at `src/dataset/view_sampler/view_sampler_bounded.py` was incorrectly using `min_gap` in place of `max_gap` during training. This bug has been fixed, and the training configurations have been updated to reflect the unintended behavior, so this shouldn't affect the results. Note that views sampled during evaluation are chosen differently, so those were not affected. Thank you to Chris Wewer for finding this bug!
 
 ## BibTeX
 
