@@ -41,7 +41,6 @@ checkpointing.every_n_train_steps=2000 trainer.max_steps=350000
 python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' data_loader.train.batch_size=1 checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000
 # model.encoder.epipolar_transformer.upscale=4
 
-
 # Tiny load encoder and latent encoder and decoder + no freeze
 python3 -m src.main +experiment=acid exp_name='acid_tiny_enc_lat_ed' hydra.run.dir='outputs/acid_tiny_enc_lat_ed' data_loader.train.batch_size=1 load_pretrained_encoder=encoder_and_encoder_latent load_pretrained_latent_decoder=true checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000
 
@@ -50,6 +49,10 @@ python3 -m src.main +experiment=acid exp_name='acid_tiny_lat_ed' hydra.run.dir='
 
 # Tiny load latent encoder and decoder + freeze
 python3 -m src.main +experiment=acid exp_name='acid_tiny_lat_ed_freeze' hydra.run.dir='outputs/acid_tiny_lat_ed_freeze' data_loader.train.batch_size=1 freeze_latent=true load_pretrained_encoder=encoder_latent load_pretrained_latent_decoder=true checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000
+
+
+# Tiny random lpips from 40k, max steps 80k
+python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' loss.lpips.apply_after_step=40000 trainer.max_steps=80000 data_loader.train.batch_size=1 checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000
 
 
 
