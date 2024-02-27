@@ -17,10 +17,6 @@
 #SBATCH --qos=qos_gpu-t3                          # for running (max 20h)
 ##SBATCH --qos=qos_gpu-dev                          # for veryfuing that the code is running.
 
-EXP_NAME="tiny_rnd_bs1_gpu1"
-OUTPUT_DUMP="${WORK}/experiments/latentpixelsplat/${EXP_NAME}"
-
-mkdir -p "${OUTPUT_DUMP}"
 
 # Cleans out the modules loaded in interactive and inherited by default
 module purge
@@ -34,7 +30,5 @@ conda activate psplat
 set -x
 
 # Code execution
-# python -m torch.distributed.launch --nproc_per_node=4 --use_env main.py \
-#   --output_dir "${OUTPUT_DUMP}" --data_path "/gpfsdsscratch/acid/" \
 python3 -m src.main +experiment=acid data_loader.train.batch_size=1 wandb.mode=offline checkpointing.every_n_train_steps=10000
 

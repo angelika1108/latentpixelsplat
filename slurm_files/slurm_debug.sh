@@ -18,10 +18,6 @@
 ##SBATCH --qos=qos_gpu-t3                          # for running (max 20h)
 #SBATCH --qos=qos_gpu-dev                          # for veryfuing that the code is running.
 
-EXP_NAME="debug"
-OUTPUT_DUMP="${WORK}/experiments/latentpixelsplat/${EXP_NAME}"
-
-mkdir -p "${OUTPUT_DUMP}"
 
 # Cleans out the modules loaded in interactive and inherited by default
 module purge
