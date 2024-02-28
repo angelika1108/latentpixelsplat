@@ -7,9 +7,6 @@ from scipy.spatial.transform import Rotation as R
 from torch import Tensor
 from torch.utils.data import default_collate
 from tqdm import tqdm
-import yaml
-import sys
-sys.path.append('../../')
 
 # Configure beartype and jaxtyping.
 with install_import_hook(
@@ -200,10 +197,10 @@ def generate_point_cloud_figure(cfg_dict):
             ),
             "use_sh": False,
         }
-        alpha = render_cuda_orthographic(**alpha_args, dump=dump, latent_channels=3)[0]
+        alpha = render_cuda_orthographic(**alpha_args, dump=dump)[0]
 
         # Render (premultiplied) color.
-        color = render_cuda_orthographic(**render_args, latent_channels=3)[0]
+        color = render_cuda_orthographic(**render_args)[0]
 
         # Render depths. Without modifying the renderer, we can only render
         # premultiplied depth, then hackily transform it into straight alpha depth,
@@ -215,7 +212,7 @@ def generate_point_cloud_figure(cfg_dict):
             "gaussian_sh_coefficients": repeat(depth, "() g -> () g c ()", c=3),
             "use_sh": False,
         }
-        depth_premultiplied = render_cuda_orthographic(**depth_args, latent_channels=latent_channels)
+        depth_premultiplied = render_cuda_orthographic(**depth_args)
         depth = (depth_premultiplied / alpha).nan_to_num(posinf=1e10, nan=1e10)[0]
 
         # Save the rendering for later depth-based alpha compositing.

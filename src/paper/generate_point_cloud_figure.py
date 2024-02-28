@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import hydra
 import torch
 from einops import einsum, rearrange, repeat
@@ -7,9 +8,6 @@ from lightning_fabric.utilities.apply_func import apply_to_collection
 from scipy.spatial.transform import Rotation as R
 from torch import Tensor
 from torch.utils.data import default_collate
-import yaml
-import sys
-sys.path.append('../../')
 
 # Configure beartype and jaxtyping.
 with install_import_hook(
@@ -138,8 +136,8 @@ def generate_point_cloud_figure(cfg_dict):
             # visual balance, 0.5x pyramid/frustum volume
             translation[2, 3] = far * (0.5 ** (1 / 3))
             pose = translation @ pose
+
             ones = torch.ones((1,), dtype=torch.float32, device=device)
-            
             render_args = {
                 "extrinsics": example["context"]["extrinsics"][0, :1] @ pose,
                 "width": ones * far * 2,
@@ -165,10 +163,10 @@ def generate_point_cloud_figure(cfg_dict):
                 ),
                 "use_sh": False,
             }
-            alpha = render_cuda_orthographic(**alpha_args, dump=dump, latent_channels=latent_channels)[0]
+            alpha = render_cuda_orthographic(**alpha_args, dump=dump)[0]
 
             # Render (premultiplied) color.
-            color = render_cuda_orthographic(**render_args, latent_channels=latent_channels)[0]
+            color = render_cuda_orthographic(**render_args)[0]
 
             # Render depths. Without modifying the renderer, we can only render
             # premultiplied depth, then hackily transform it into straight alpha depth,
@@ -180,7 +178,7 @@ def generate_point_cloud_figure(cfg_dict):
                 "gaussian_sh_coefficients": repeat(depth, "() g -> () g c ()", c=3),
                 "use_sh": False,
             }
-            depth_premultiplied = render_cuda_orthographic(**depth_args, latent_channels=latent_channels)
+            depth_premultiplied = render_cuda_orthographic(**depth_args)
             depth = (depth_premultiplied / alpha).nan_to_num(posinf=1e10, nan=1e10)[0]
 
             # Save the rendering for later depth-based alpha compositing.

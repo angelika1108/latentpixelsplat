@@ -28,8 +28,7 @@ def render_projections(
     margin: float = 0.1,
     draw_label: bool = True,
     extra_label: str = "",
-    latent_channels: int = 3,
-) -> Float[Tensor, "batch 3 dim_out height width"]:
+) -> Float[Tensor, "batch 3 3 height width"]:
     device = gaussians.means.device
     b, _, _ = gaussians.means.shape
 
@@ -73,15 +72,13 @@ def render_projections(
             near,
             far,
             (resolution, resolution),
-            torch.zeros((b, 3), dtype=torch.float32, device=device),  # background_color
+            torch.zeros((b, 3), dtype=torch.float32, device=device),
             gaussians.means,
             gaussians.covariances,
             gaussians.harmonics,
             gaussians.opacities,
             fov_degrees=10.0,
-            latent_channels=3,
         )
-
         if draw_label:
             right_axis_name = "XYZ"[right_axis]
             down_axis_name = "XYZ"[down_axis]
