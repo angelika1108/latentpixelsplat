@@ -151,6 +151,13 @@ def train(cfg_dict: DictConfig):
         decoder_latent=decoder_latent,
     )
     
+    # breakpoint()
+    # len(model_wrapper.encoder.state_dict().keys())  # 632
+    # len(model_wrapper.decoder.state_dict().keys())  # 0
+    # len(model_wrapper.decoder_latent.state_dict().keys()) # 48
+    # torch.save(model_wrapper.encoder.state_dict(), 'encoder_init.pth')
+    # torch.save(model_wrapper.decoder_latent.state_dict(), 'decoder_latent_init.pth')
+
 
     if cfg.load_pretrained_encoder is not None:
         if cfg.load_pretrained_encoder == 'encoder_latent':
@@ -170,6 +177,14 @@ def train(cfg_dict: DictConfig):
             else:
                 raise ValueError(f"Unknown encoder_latent_type or not implemented yet: {encoder.encoder_latent_type }")
         
+        elif cfg.load_pretrained_encoder == 'encoder':
+            if encoder.encoder_latent_type  == 'tiny':
+                encoder_init_path = "pretrained_models/encoder_tiny.pth"
+                encoder_init = torch.load(encoder_init_path)
+                model_wrapper.encoder.load_state_dict(encoder_init)
+            else:
+                raise ValueError(f"Unknown encoder_latent_type or not implemented yet: {encoder.encoder_latent_type }")
+        
         else:
             raise ValueError(f"Unknown load_pretrained_encoder: {cfg.load_pretrained_encoder}")
     
@@ -181,13 +196,6 @@ def train(cfg_dict: DictConfig):
             model_wrapper.decoder_latent.load_state_dict(decoder_latent_init)
         else:
             raise ValueError(f"Unknown decoder_latent_type or not implemented yet: {decoder_latent_type}")
-
-    # breakpoint()
-    # len(model_wrapper.encoder.state_dict().keys())  # 632
-    # len(model_wrapper.decoder.state_dict().keys())  # 0
-    # len(model_wrapper.decoder_latent.state_dict().keys()) # 48
-    # torch.save(model_wrapper.encoder.state_dict(), 'encoder_init.pth')
-    # torch.save(model_wrapper.decoder_latent.state_dict(), 'decoder_latent_init.pth')
 
 
     if cfg.freeze_latent and decoder_latent_type is not None:
