@@ -72,7 +72,6 @@ class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
             repeat(gaussians.harmonics, "b g c d_sh -> (b v) g c d_sh", v=v),
             repeat(gaussians.opacities, "b g -> (b v) g", v=v),
             use_sh=self.use_sh,
-            latent_channels=self.d_latent,
         )
         color = rearrange(color, "(b v) c h w -> b v c h w", b=b, v=v)
 

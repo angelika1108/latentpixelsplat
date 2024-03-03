@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=acid_tiny_enc_lat_ed_80k  # name of job
+#SBATCH --job-name=acid_tiny_lat_ed_80k  # name of job
 ##SBATCH -C v100-32g 							   # reserving 16 GB GPUs only if commented
 ##SBATCH --partition=gpu_p2                        # uncomment for gpu_p2 partition gpu_p2
 ##SBATCH --ntasks=4					 			   # total number of processes (= number of GPUs here)
@@ -11,13 +11,13 @@
 #SBATCH --hint=nomultithread         			   # hyperthreading is deactivated
 #SBATCH --time=20:00:00             			   # maximum execution time requested (HH:MM:SS)
 ##SBATCH --time=00:10:00             			   # maximum execution time requested (HH:MM:SS)
-#SBATCH --output=slurm_logs/acid_tiny_enc_lat_ed_80k_%j.output   # name of output file
-#SBATCH --error=slurm_logs/acid_tiny_enc_lat_ed_80k_%j.error     # name of error file (here, in common with the output file)
+#SBATCH --output=slurm_logs/acid_tiny_lat_ed_80k_%j.output   # name of output file
+#SBATCH --error=slurm_logs/acid_tiny_lat_ed_80k_%j.error     # name of error file (here, in common with the output file)
 ##SBATCH --qos=qos_gpu-t4                          # for running (max 100h)
-#SBATCH --qos=qos_gpu-t3                           # for running (max 20h)
-##SBATCH --qos=qos_gpu-dev                         # for veryfuing that the code is running.
+#SBATCH --qos=qos_gpu-t3                          # for running (max 20h)
+##SBATCH --qos=qos_gpu-dev                          # for veryfuing that the code is running.
 
-EXP_NAME="acid_tiny_enc_lat_ed_80k"
+EXP_NAME="acid_tiny_lat_ed_80k"
 RUN_DIR="./outputs/${EXP_NAME}"
 
 # Cleans out the modules loaded in interactive and inherited by default
@@ -32,4 +32,4 @@ conda activate psplat
 set -x
 
 # Code execution
-srun python3 -m src.main +experiment=acid exp_name=${EXP_NAME} hydra.run.dir=${RUN_DIR} trainer.devices=4 trainer.num_nodes=1 data_loader.train.batch_size=1 wandb.mode=offline loss.lpips.apply_after_step=40000 trainer.max_steps=80000 load_pretrained_encoder=encoder_and_encoder_latent load_pretrained_latent_decoder=true checkpointing.every_n_train_steps=10000
+srun python3 -m src.main +experiment=acid exp_name=${EXP_NAME} hydra.run.dir=${RUN_DIR} trainer.devices=4 trainer.num_nodes=1 data_loader.train.batch_size=1 wandb.mode=offline loss.lpips.apply_after_step=40000 trainer.max_steps=80000 load_pretrained_encoder=encoder_latent load_pretrained_latent_decoder=true checkpointing.every_n_train_steps=10000

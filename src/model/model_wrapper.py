@@ -270,7 +270,6 @@ class ModelWrapper(LightningModule):
         # t_splatting = time.time() - t0
         # torch.cuda.synchronize()
         # t0 = time.time() 
-        # breakpoint()
 
         # Latent decoder
         b, v, _, _, _ = output.color.shape
@@ -471,7 +470,6 @@ class ModelWrapper(LightningModule):
                     gaussians_probabilistic,
                     256,
                     extra_label="(Probabilistic)",
-                    latent_channels=self.d_latent,
                 )[0]
             ),
             hcat(
@@ -479,7 +477,6 @@ class ModelWrapper(LightningModule):
                     gaussians_deterministic, 
                     256, 
                     extra_label="(Deterministic)",
-                    latent_channels=self.d_latent,
                 )[0]
             ),
             align="left",
@@ -496,18 +493,17 @@ class ModelWrapper(LightningModule):
             "cameras", [prep_image(add_border(cameras))], step=self.global_step
         )
         
-        breakpoint()
-        if self.encoder_visualizer is not None:
-            for k, image in self.encoder_visualizer.visualize(
-                batch["context"], self.global_step
-            ).items():
-                self.logger.log_image(k, [prep_image(image)], step=self.global_step)
+        # if self.encoder_visualizer is not None:
+        #     for k, image in self.encoder_visualizer.visualize(
+        #         batch["context"], self.global_step
+        #     ).items():
+        #         self.logger.log_image(k, [prep_image(image)], step=self.global_step)
 
-        # Run video validation step.
-        self.render_video_interpolation(batch)
-        self.render_video_wobble(batch)
-        if self.train_cfg.extended_visualization:
-            self.render_video_interpolation_exaggerated(batch)
+        # # Run video validation step.
+        # self.render_video_interpolation(batch)
+        # self.render_video_wobble(batch)
+        # if self.train_cfg.extended_visualization:
+        #     self.render_video_interpolation_exaggerated(batch)
 
     @rank_zero_only
     def render_video_wobble(self, batch: BatchedExample) -> None:
@@ -659,28 +655,28 @@ class ModelWrapper(LightningModule):
 
 
         ############################################
-        video = torch.stack(images)
-        video = (video.clip(min=0, max=1) * 255).type(torch.uint8).cpu().numpy()
-        if loop_reverse:
-            video = pack([video, video[::-1][1:-1]], "* c h w")[0]
-        visualizations = {
-            f"video/{name}": wandb.Video(video[None], fps=30, format="mp4")
-        }
+        # video = torch.stack(images)
+        # video = (video.clip(min=0, max=1) * 255).type(torch.uint8).cpu().numpy()
+        # if loop_reverse:
+        #     video = pack([video, video[::-1][1:-1]], "* c h w")[0]
+        # visualizations = {
+        #     f"video/{name}": wandb.Video(video[None], fps=30, format="mp4")
+        # }
 
 
-        # Since the PyTorch Lightning doesn't support video logging, log to wandb directly.
-        try:
-            wandb.log(visualizations)
-        except Exception:
-            assert isinstance(self.logger, LocalLogger)
-            for key, value in visualizations.items():
-                tensor = value._prepare_video(value.data)
-                clip = mpy.ImageSequenceClip(list(tensor), fps=value._fps)
-                dir = LOG_PATH / key
-                dir.mkdir(exist_ok=True, parents=True)
-                clip.write_videofile(
-                    str(dir / f"{self.global_step:0>6}.mp4"), logger=None
-                )
+        # # Since the PyTorch Lightning doesn't support video logging, log to wandb directly.
+        # try:
+        #     wandb.log(visualizations)
+        # except Exception:
+        #     assert isinstance(self.logger, LocalLogger)
+        #     for key, value in visualizations.items():
+        #         tensor = value._prepare_video(value.data)
+        #         clip = mpy.ImageSequenceClip(list(tensor), fps=value._fps)
+        #         dir = LOG_PATH / key
+        #         dir.mkdir(exist_ok=True, parents=True)
+        #         clip.write_videofile(
+        #             str(dir / f"{self.global_step:0>6}.mp4"), logger=None
+        #         )
     
 
     def configure_optimizers(self):

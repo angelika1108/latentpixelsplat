@@ -109,7 +109,7 @@ def train(cfg_dict: DictConfig):
         gradient_clip_val=cfg.trainer.gradient_clip_val,
         max_steps=cfg.trainer.max_steps,
         accumulate_grad_batches=cfg.trainer.accumulate_grad_batches,
-        # profiler="advanced", # profiler, "simple", "advanced", "pytorch"
+        profiler="advanced", # profiler, "simple", "advanced", "pytorch"
         # precision="bf16-mixed",
     )
 
