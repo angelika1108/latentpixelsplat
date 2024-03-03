@@ -169,8 +169,8 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         deterministic: bool = False,
         visualization_dump: Optional[dict] = None):
 
-        torch.cuda.synchronize()
-        t0 = time.time()
+        # torch.cuda.synchronize()
+        # t0 = time.time()
 
         device = context["image"].device
         b, v, _, h, w = context["image"].shape
@@ -181,10 +181,10 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         features = self.backbone_projection(features)
         features = rearrange(features, "b v h w c -> b v c h w")
 
-        torch.cuda.synchronize()
-        t_backbone = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
+        # torch.cuda.synchronize()
+        # t_backbone = time.time() - t0
+        # torch.cuda.synchronize()
+        # t0 = time.time()
 
         # Run the epipolar transformer.
         if self.cfg.use_epipolar_transformer:
@@ -196,10 +196,10 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 context["far"],
             )
 
-        torch.cuda.synchronize()
-        t_epipolar_transformer = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
+        # torch.cuda.synchronize()
+        # t_epipolar_transformer = time.time() - t0
+        # torch.cuda.synchronize()
+        # t0 = time.time()
 
         if self.epipolar_transformer_upscale:
             features = rearrange(features, "b v c h w -> (b v) c h w")
@@ -225,10 +225,10 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
 
         # breakpoint()
 
-        torch.cuda.synchronize()
-        t_latent_encoder = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
+        # torch.cuda.synchronize()
+        # t_latent_encoder = time.time() - t0
+        # torch.cuda.synchronize()
+        # t0 = time.time()
 
         skip = self.high_resolution_skip(skip)
         features = features + \
@@ -244,10 +244,10 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             1 if deterministic else self.cfg.gaussians_per_pixel,
         )
 
-        torch.cuda.synchronize()
-        t_depth = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
+        # torch.cuda.synchronize()
+        # t_depth = time.time() - t0
+        # torch.cuda.synchronize()
+        # t0 = time.time()
 
         # Convert the features and depths into Gaussians.
         if self.encoder_latent_type is not None:
@@ -302,11 +302,11 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             )
 
 
-        torch.cuda.synchronize()
-        t_gaussian_adapter = time.time() - t0
-        torch.cuda.synchronize()
-        t0 = time.time()
-        breakpoint()
+        # torch.cuda.synchronize()
+        # t_gaussian_adapter = time.time() - t0
+        # torch.cuda.synchronize()
+        # t0 = time.time()
+        # breakpoint()
 
         # Dump visualizations if needed.
         if visualization_dump is not None:
