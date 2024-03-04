@@ -133,7 +133,7 @@ def train(cfg_dict: DictConfig):
         with open(config_path, 'r') as file:
             config = yaml.safe_load(file)
 
-        decoder_latent = DecoderLatentTiny(d_in=config['d_in'], d_out=config['d_out'])
+        decoder_latent = DecoderLatentTiny(d_in=config['d_in'], d_out=config['d_out'])  # , upsample=8
     
     else:
         raise ValueError(f"Unknown decoder_latent_type: {decoder_latent_type}")

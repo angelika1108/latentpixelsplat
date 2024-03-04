@@ -60,3 +60,13 @@ python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' 
 
 
 
+# Tiny random downsample 8
+python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' data_loader.train.batch_size=1 checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000
+# model.encoder.epipolar_transformer.upscale=4
+
+
+
+
+# pixelsplat load encoder 
+python3 -m src.main +experiment=acid exp_name='acid_enc' hydra.run.dir='outputs/acid_enc' data_loader.train.batch_size=1 load_pretrained_encoder=encoder checkpointing.every_n_train_steps=10000 trainer.val_check_interval=10 optimizer.warm_up_steps=1000
+

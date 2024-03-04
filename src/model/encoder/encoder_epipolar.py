@@ -91,7 +91,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             with open(config_path, 'r') as file:
                 config = yaml.safe_load(file)
             self.encoder_latent = EncoderLatentTiny(
-                d_in=config['d_in'], d_out=config['d_out'])
+                d_in=config['d_in'], d_out=config['d_out'])  #, downsample=8
             self.d_latent = config['d_out']
 
         else:
@@ -145,6 +145,8 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             nn.Conv2d(self.d_latent, cfg.d_feature, 7, 1, 3),
             nn.ReLU(),
         )
+
+        # self.feature_downscaler = nn.Conv2d(cfg.d_feature, cfg.d_feature, 2, 2) if self.downsample == 8 else None
 
     def map_pdf_to_opacity(
         self,
@@ -230,7 +232,15 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         # torch.cuda.synchronize()
         # t0 = time.time()
 
+
+        # if self.feature_downscaler is not None:
+        #     features = rearrange(features, "b v c h w -> (b v) c h w")
+        #     features = self.feature_downscaler(features)
+        #     features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
+        # breakpoint()
+
         skip = self.high_resolution_skip(skip)
+        # breakpoint()
         features = features + \
             rearrange(skip, "(b v) c h w -> b v c h w", b=b, v=v)
 

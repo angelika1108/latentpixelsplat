@@ -358,12 +358,23 @@ class DecoderLatentTiny(nn.Module):
         super().__init__()
         self.upsample = upsample
 
-        self.layers = nn.Sequential(
-        Clamp(), nn.Conv2d(d_in, 64, 3, padding=1), nn.ReLU(),
-        Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
-        Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
-        Block(64, 64), nn.Conv2d(64, d_out, 3, padding=1),
-        )
+        if self.upsample == 4:
+            self.layers = nn.Sequential(
+            Clamp(), nn.Conv2d(d_in, 64, 3, padding=1), nn.ReLU(),
+            Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
+            Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
+            Block(64, 64), nn.Conv2d(64, d_out, 3, padding=1),
+            )
+        elif self.upsample == 8:
+            self.layers = nn.Sequential(
+            Clamp(), nn.Conv2d(d_in, 64, 3, padding=1), nn.ReLU(),
+            Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
+            Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
+            Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
+            Block(64, 64), nn.Conv2d(64, d_out, 3, padding=1),
+            )
+        else:
+            raise ValueError("Upsample factor must be 4 or 8")
 
     def forward(self, x):
         # Merge the batch dimensions.
@@ -372,7 +383,6 @@ class DecoderLatentTiny(nn.Module):
 
         features = self.layers(x)
         features = features.clamp(0, 1)
-        # breakpoint()
 
         return features # if separate batch dimensions: rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
 

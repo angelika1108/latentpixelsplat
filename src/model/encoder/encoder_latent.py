@@ -318,12 +318,23 @@ class EncoderLatentTiny(nn.Module):
         assert d_in == 3
         self.downsample = downsample
         
-        self.layers = nn.Sequential(
-        nn.Conv2d(d_in, 64, 3, padding=1), Block(64, 64),
-        nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
-        nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
-        nn.Conv2d(64, d_out, 3, padding=1),
-        )
+        if self.downsample == 4:
+            self.layers = nn.Sequential(
+            nn.Conv2d(d_in, 64, 3, padding=1), Block(64, 64),
+            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
+            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
+            nn.Conv2d(64, d_out, 3, padding=1),
+            )
+        elif self.downsample == 8:
+            self.layers = nn.Sequential(
+            nn.Conv2d(d_in, 64, 3, padding=1), Block(64, 64),
+            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
+            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
+            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
+            nn.Conv2d(64, d_out, 3, padding=1),
+            )
+        else:
+            raise ValueError("downsample must be 4 or 8")
     
     def forward(self, x):
         # Merge the batch dimensions.
