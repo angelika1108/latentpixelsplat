@@ -98,7 +98,8 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             raise ValueError(
                 f"Unknown encoder_latent_type: {self.encoder_latent_type}")
 
-        self.downsample = self.encoder_latent.downsample
+        if self.encoder_latent is not None:
+            self.downsample = self.encoder_latent.downsample
 
         if cfg.use_epipolar_transformer:
             self.epipolar_transformer = EpipolarTransformer(
@@ -203,12 +204,12 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         # torch.cuda.synchronize()
         # t0 = time.time()
 
-        if self.epipolar_transformer_upscale:
-            features = rearrange(features, "b v c h w -> (b v) c h w")
-            features = F.interpolate(features, size=(
-                h//self.epipolar_transformer_upscale, w//self.epipolar_transformer_upscale), mode="bilinear", align_corners=False)
-            features = rearrange(
-                features, "(b v) c h w -> b v c h w", b=b, v=v)
+        # if self.epipolar_transformer_upscale:
+        #     features = rearrange(features, "b v c h w -> (b v) c h w")
+        #     features = F.interpolate(features, size=(
+        #         h//self.epipolar_transformer_upscale, w//self.epipolar_transformer_upscale), mode="bilinear", align_corners=False)
+        #     features = rearrange(
+        #         features, "(b v) c h w -> b v c h w", b=b, v=v)
         
         # Add the high-resolution skip connection.
         skip = rearrange(context["image"], "b v c h w -> (b v) c h w")
@@ -224,8 +225,6 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 skip = self.encoder_latent(skip)
             else:
                 raise ValueError("Unknown latent encoder type")
-
-        # breakpoint()
 
         # torch.cuda.synchronize()
         # t_latent_encoder = time.time() - t0
