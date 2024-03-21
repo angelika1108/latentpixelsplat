@@ -46,7 +46,6 @@ def cyan(text: str) -> str:
 def train(cfg_dict: DictConfig):
     cfg = load_typed_root_config(cfg_dict)
     set_cfg(cfg_dict)
-    torch.manual_seed(cfg_dict.seed)
 
     # Set up the output directory.
     output_dir = Path(
@@ -100,9 +99,11 @@ def train(cfg_dict: DictConfig):
         devices=cfg.trainer.devices,
         num_nodes=cfg.trainer.num_nodes,
         accelerator="gpu",
-        strategy="ddp_find_unused_parameters_true"
-        if torch.cuda.device_count() > 1
-        else "auto",
+        strategy=(
+            "ddp_find_unused_parameters_true"
+            if torch.cuda.device_count() > 1
+            else "auto"
+        ),
         callbacks=callbacks,
         val_check_interval=cfg.trainer.val_check_interval,
         enable_progress_bar=False,
@@ -112,6 +113,7 @@ def train(cfg_dict: DictConfig):
         # profiler="advanced", # profiler, "simple", "advanced", "pytorch"
         # precision="bf16-mixed",
     )
+    torch.manual_seed(cfg_dict.seed + trainer.global_rank)
 
     encoder, encoder_visualizer = get_encoder(cfg.model.encoder)
     
@@ -208,7 +210,12 @@ def train(cfg_dict: DictConfig):
             param.requires_grad = False
        
     
-    data_module = DataModule(cfg.dataset, cfg.data_loader, step_tracker)
+    data_module = DataModule(
+        cfg.dataset,
+        cfg.data_loader,
+        step_tracker,
+        global_rank=trainer.global_rank,
+    )
     
     if cfg.mode == "train":
         trainer.fit(model_wrapper, datamodule=data_module,

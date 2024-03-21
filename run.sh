@@ -60,10 +60,10 @@ python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' 
 
 
 
-# Tiny random downsample 8
-python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' data_loader.train.batch_size=1 checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000
+# Tiny random no latent encoder
+python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' model.encoder.encoder_latent_type=null model.encoder.epipolar_transformer.upscale=4 data_loader.train.batch_size=1 checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000
+# model.encoder.encoder_latent_type=null
 # model.encoder.epipolar_transformer.upscale=4
-
 
 
 
