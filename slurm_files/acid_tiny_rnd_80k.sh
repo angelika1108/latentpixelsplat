@@ -32,4 +32,4 @@ conda activate psplat
 set -x
 
 # Code execution
-srun python3 -m src.main +experiment=acid exp_name=${EXP_NAME} hydra.run.dir=${RUN_DIR} trainer.devices=4 trainer.num_nodes=1 data_loader.train.batch_size=1 wandb.mode=offline loss.lpips.apply_after_step=40000 trainer.max_steps=80000 checkpointing.every_n_train_steps=10000
+srun python3 -m src.main +experiment=acid wandb.mode=offline wandb.id=0324 exp_name=${EXP_NAME} hydra.run.dir=${RUN_DIR} trainer.devices=4 trainer.num_nodes=1 data_loader.train.batch_size=1 loss.lpips.apply_after_step=40000 trainer.max_steps=80000 checkpointing.every_n_train_steps=10000
