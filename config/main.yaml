@@ -12,6 +12,8 @@ wandb:
   entity: your-entity-here
   name: placeholder
   mode: disabled
+  id: null
+  log_model: false
 
 mode: train
 

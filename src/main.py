@@ -53,9 +53,6 @@ def train(cfg_dict: DictConfig):
     )
 
     print(cyan(f"Saving outputs to {output_dir}."))
-    # latest_run = output_dir.parents[1] / "latest-run"
-    # os.system(f"rm {latest_run}")
-    # os.system(f"ln -s {output_dir} {latest_run}")
 
     # Set up logging with wandb.
     callbacks = []
@@ -65,9 +62,10 @@ def train(cfg_dict: DictConfig):
             mode=cfg_dict.wandb.mode,
             name=f"{cfg_dict.wandb.name} ({output_dir.parent.name}/{output_dir.name})",
             tags=cfg_dict.wandb.get("tags", None),
-            log_model="all",
+            log_model=cfg_dict.wandb.log_model,
             save_dir=output_dir,
             config=OmegaConf.to_container(cfg_dict),
+            id=cfg_dict.wandb.id,
         )
         callbacks.append(LearningRateMonitor("step", True))
 

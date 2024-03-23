@@ -27,6 +27,9 @@ python3 -m src.main +experiment=acid mode=test wandb.mode=disabled dataset/view_
 # optimizer.warm_up_steps=1000
 # checkpointing.load=pretrained_models/acid_latent_d3_f4_noattn.ckpt
 # checkpointing.every_n_train_steps=2000
+# checkpointing.save_top_k=3
+# checkpointing.every_n_epochs=5000
+
 
 # Train without checkpoint
 python3 -m src.main +experiment=acid hydra.run.dir='outputs/exp' wandb.mode=disabled data_loader.train.batch_size=1 trainer.val_check_interval=30 optimizer.warm_up_steps=1000 checkpointing.every_n_train_steps=2000
@@ -35,6 +38,8 @@ python3 -m src.main +experiment=acid hydra.run.dir='outputs/exp' wandb.mode=disa
 python3 -m src.main +experiment=acid data_loader.train.batch_size=1 wandb.mode=disabled trainer.val_check_interval=30 optimizer.warm_up_steps=1000 
 checkpointing.load=pretrained_models/acid_latent_d3_f4_noattn.ckpt 
 checkpointing.every_n_train_steps=2000 trainer.max_steps=350000
+
+
 
 
 # Tiny random
