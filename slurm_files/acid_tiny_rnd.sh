@@ -1,7 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=acid_tiny_rnd  # name of job
+#SBATCH --job-name=acid_tiny_rnd                   # name of job
 ##SBATCH -C v100-32g 							   # reserving 16 GB GPUs only if commented
 ##SBATCH --partition=gpu_p2                        # uncomment for gpu_p2 partition gpu_p2
+##SBATCH -C a100                                   # uncomment for partition a100
 ##SBATCH --ntasks=4					 			   # total number of processes (= number of GPUs here)
 #SBATCH --ntasks-per-node=4
 #SBATCH --nodes=1                                  # nb reserved nodes
@@ -15,7 +16,7 @@
 #SBATCH --error=slurm_logs/acid_tiny_rnd_%j.error     # name of error file (here, in common with the output file)
 #SBATCH --qos=qos_gpu-t4                          # for running (max 100h)
 ##SBATCH --qos=qos_gpu-t3                          # for running (max 20h)
-##SBATCH --qos=qos_gpu-dev                          # for veryfuing that the code is running.
+##SBATCH --qos=qos_gpu-dev                          # for verifying that the code is running.
 
 EXP_NAME="acid_tiny_rnd"
 RUN_DIR="./outputs/${EXP_NAME}"

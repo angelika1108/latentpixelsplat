@@ -199,6 +199,9 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 context["far"],
             )
 
+        assert h // features.shape[3] == w // features.shape[4]
+        dowsample_factor = h // features.shape[3]
+
         # torch.cuda.synchronize()
         # t_epipolar_transformer = time.time() - t0
         # torch.cuda.synchronize()
@@ -236,10 +239,12 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         #     features = rearrange(features, "b v c h w -> (b v) c h w")
         #     features = self.feature_downscaler(features)
         #     features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
-        # breakpoint()
 
         skip = self.high_resolution_skip(skip)
-        # breakpoint()
+        
+        if self.encoder_latent is None:
+            skip = F.interpolate(skip, size=(features.shape[3], features.shape[4]), mode="bilinear", align_corners=True)
+        
         features = features + \
             rearrange(skip, "(b v) c h w -> b v c h w", b=b, v=v)
 
@@ -259,12 +264,19 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         # t0 = time.time()
 
         # Convert the features and depths into Gaussians.
+        # if self.encoder_latent_type is not None:
+        #     h_down = h // self.downsample
+        #     w_down = w // self.downsample
+        # else:
+        #     h_down = h
+        #     w_down = w
+
         if self.encoder_latent_type is not None:
             h_down = h // self.downsample
             w_down = w // self.downsample
         else:
-            h_down = h
-            w_down = w
+            h_down = h // dowsample_factor
+            w_down = w // dowsample_factor
 
         # breakpoint()
         xy_ray, _ = sample_image_grid((h_down, w_down), device)
