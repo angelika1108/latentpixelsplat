@@ -80,8 +80,12 @@ python3 -m src.main +experiment=acid exp_name='acid_tiny_lat_ed' hydra.run.dir='
 python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' model.encoder.encoder_latent_type=null data_loader.train.batch_size=1 checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000
 
 
-# 4_gaussians_per_pixel
+# gaussians_per_pixel=4
 python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' data_loader.train.batch_size=1 checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000 model.encoder.gaussians_per_pixel=4
+
+# gaussians_per_pixel=1, num_monocular_samples=1
+python3 -m src.main +experiment=acid wandb.tags=acid,256x256,num_monocular_samples exp_name='exp' hydra.run.dir='outputs/exp' data_loader.train.batch_size=1 checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000 model.encoder.gaussians_per_pixel=1 model.encoder.num_monocular_samples=1
+
 
 
 
