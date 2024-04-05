@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=10           			   # number of cores per task (1/4 of the 4-GPUs node)
 # /!\ Caution, "multithread" in Slurm vocabulary refers to hyperthreading.
 #SBATCH --hint=nomultithread         			   # hyperthreading is deactivated
-#SBATCH --time=00:20:00             			   # maximum execution time requested (HH:MM:SS)
+#SBATCH --time=00:15:00             			   # maximum execution time requested (HH:MM:SS)
 ##SBATCH --time=00:10:00             			   # maximum execution time requested (HH:MM:SS)
 #SBATCH --output=slurm_logs/test_acid_tiny_enc_lat_ed_80k_%j.output   # name of output file
 #SBATCH --error=slurm_logs/test_acid_tiny_enc_lat_ed_80k_%j.error     # name of error file (here, in common with the output file)
@@ -19,9 +19,8 @@
 ##SBATCH --qos=qos_gpu-dev                          # for veryfuing that the code is running (max 10min)
 
 
-TRAIN_NAME ="acid_tiny_enc_lat_ed_80k"
-EXP_NAME="test_${TRAIN_NAME}"
-RUN_DIR="./outputs/${TRAIN_NAME}"
+EXP_NAME ="acid_tiny_enc_lat_ed_80k"
+RUN_DIR="./outputs/${EXP_NAME}"
 
 # Cleans out the modules loaded in interactive and inherited by default
 module purge
@@ -35,5 +34,7 @@ conda activate psplat
 set -x
 
 # Code execution
-python3 -m src.main +experiment=acid mode=test exp_name=${EXP_NAME} hydra.run.dir=${RUN_DIR} dataset/view_sampler=evaluation dataset.view_sampler.index_path=assets/evaluation_index_acid.json test.output_path=outputs/acid_tiny_enc_lat_ed_80k/test checkpointing.load=outputs/acid_tiny_enc_lat_ed_80k/checkpoints/epoch7_step80000.ckpt load_pretrained_encoder=encoder_and_encoder_latent load_pretrained_latent_decoder=true
-
+# Test
+python3 -m src.main +experiment=acid mode=test exp_name=${EXP_NAME} hydra.run.dir=${RUN_DIR} dataset/view_sampler=evaluation dataset.view_sampler.index_path=assets/evaluation_index_acid.json test.output_path=outputs/${EXP_NAME}/test checkpointing.load=outputs/${EXP_NAME}/checkpoints/epoch7_step80000.ckpt load_pretrained_encoder=encoder_and_encoder_latent load_pretrained_latent_decoder=true
+# Metrics
+python3 -m src.scripts.compute_metrics +experiment=acid +evaluation=acid output_metrics_path=outputs/${EXP_NAME}/test/acid/evaluation_metrics.json evaluation.methods.0.path=outputs/${EXP_NAME}/test/acid

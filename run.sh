@@ -28,6 +28,17 @@ python3 -m src.main +experiment=acid mode=test exp_name='acid_tiny_enc_lat_ed_80
 # load_pretrained_encoder=encoder_and_encoder_latent 
 # load_pretrained_latent_decoder=true
 
+# acid_tiny_enc_80k
+python3 -m src.main +experiment=acid mode=test exp_name='acid_tiny_enc_80k' hydra.run.dir='outputs/acid_tiny_enc_80k' dataset/view_sampler=evaluation dataset.view_sampler.index_path=assets/evaluation_index_acid.json test.output_path=outputs/acid_tiny_enc_80k/test checkpointing.load=outputs/acid_tiny_enc_80k/checkpoints/epoch7_step80000.ckpt load_pretrained_encoder=encoder load_pretrained_latent_decoder=false
+
+# acid_tiny_lat_ed_80k
+python3 -m src.main +experiment=acid mode=test exp_name='acid_tiny_lat_ed_80k' hydra.run.dir='outputs/acid_tiny_lat_ed_80k' dataset/view_sampler=evaluation dataset.view_sampler.index_path=assets/evaluation_index_acid.json test.output_path=outputs/acid_tiny_lat_ed_80k/test checkpointing.load=outputs/acid_tiny_lat_ed_80k/checkpoints/epoch7_step80000.ckpt load_pretrained_encoder=encoder_latent load_pretrained_latent_decoder=true
+
+# acid_tiny_rnd_80k
+python3 -m src.main +experiment=acid mode=test exp_name='acid_tiny_rnd_80k' hydra.run.dir='outputs/acid_tiny_rnd_80k' dataset/view_sampler=evaluation dataset.view_sampler.index_path=assets/evaluation_index_acid.json test.output_path=outputs/acid_tiny_rnd_80k/test checkpointing.load=outputs/acid_tiny_rnd_80k/checkpoints/epoch7_step80000.ckpt
+
+
+
 
 # Train
 # trainer.val_check_interval=30
@@ -69,6 +80,9 @@ python3 -m src.main +experiment=acid exp_name='acid_tiny_lat_ed' hydra.run.dir='
 python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' model.encoder.encoder_latent_type=null data_loader.train.batch_size=1 checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000
 
 
+# 4_gaussians_per_pixel
+python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' data_loader.train.batch_size=1 checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000 model.encoder.gaussians_per_pixel=4
+
 
 
 # Metrics
@@ -89,5 +103,15 @@ python3 -m src.scripts.compute_metrics +experiment=acid +evaluation=acid output_
 python3 -m src.scripts.compute_metrics +experiment=acid +evaluation=acid output_metrics_path=outputs/acid_tiny_enc_lat_ed_80k/test/acid/evaluation_metrics.json evaluation.methods.0.path=outputs/acid_tiny_enc_lat_ed_80k/test/acid
 # output_metrics_path=outputs/acid_tiny_enc_lat_ed_80k/test/acid/evaluation_metrics.json 
 # evaluation.methods.0.path=outputs/acid_tiny_enc_lat_ed_80k/test/acid
+
+# acid_tiny_enc_80k
+python3 -m src.scripts.compute_metrics +experiment=acid +evaluation=acid output_metrics_path=outputs/acid_tiny_enc_80k/test/acid/evaluation_metrics.json evaluation.methods.0.path=outputs/acid_tiny_enc_80k/test/acid
+
+# acid_tiny_lat_ed_80k
+python3 -m src.scripts.compute_metrics +experiment=acid +evaluation=acid output_metrics_path=outputs/acid_tiny_lat_ed_80k/test/acid/evaluation_metrics.json evaluation.methods.0.path=outputs/acid_tiny_lat_ed_80k/test/acid
+
+# acid_tiny_rnd_80k
+python3 -m src.scripts.compute_metrics +experiment=acid +evaluation=acid output_metrics_path=outputs/acid_tiny_rnd_80k/test/acid/evaluation_metrics.json evaluation.methods.0.path=outputs/acid_tiny_rnd_80k/test/acid
+
 
 
