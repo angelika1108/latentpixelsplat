@@ -1,6 +1,0 @@
-name: latent_decoder
-
-model: tiny
-d_in: 4  # 3, 4
-d_out: 3
-downsample: 4  # 4, 8

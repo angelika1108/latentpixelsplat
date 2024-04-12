@@ -29,21 +29,11 @@ class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
     ) -> None:
         super().__init__(cfg, dataset_cfg)
 
-        if cfg.d_latent == 3 or cfg.d_latent == 4:
-            self.register_buffer(
-                "background_color",
-                torch.tensor(dataset_cfg.background_color, dtype=torch.float32),
-                persistent=False,
-            )
-        # elif cfg.d_latent == 4:
-        #     dataset_cfg.background_color = [0.0, 0.0, 0.0, 0.0]
-        #     self.register_buffer(
-        #         "background_color",
-        #         torch.tensor(dataset_cfg.background_color, dtype=torch.float32),
-        #         persistent=False,
-        #     )
-        else:
-            raise ValueError(f"Invalid d_latent: {cfg.d_latent}")
+        self.register_buffer(
+            "background_color",
+            torch.tensor(dataset_cfg.background_color, dtype=torch.float32),
+            persistent=False,
+        )
         
         self.use_sh = cfg.use_sh
         self.d_latent = cfg.d_latent

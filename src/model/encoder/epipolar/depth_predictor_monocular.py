@@ -45,27 +45,29 @@ class DepthPredictorMonocular(nn.Module):
         Float[Tensor, "batch view ray surface sample"],  # depth
         Float[Tensor, "batch view ray surface sample"],  # pdf
     ]:
-        s = self.num_samples
+        s = self.num_samples  # 32 num_monocular_samples
 
         # Convert the features into a depth distribution plus intra-bucket offsets.
-        features = self.projection(features)
+        features = self.projection(features)  # torch.Size([1, 2, 4096, 64])  # 64 = 2 * num_monocular_samples * 1
+
         pdf_raw, offset_raw = rearrange(
             features, "... (dpt srf c) -> c ... srf dpt", c=2, srf=self.num_surfaces
-        )
-        pdf = self.to_pdf(pdf_raw)
-        offset = self.to_offset(offset_raw)
+        )   # torch.Size([1, 2, 4096, 1, num_monocular_samples]), torch.Size([1, 2, 4096, 1, num_monocular_samples])
+
+        pdf = self.to_pdf(pdf_raw)   # torch.Size([1, 2, 4096, 1, num_monocular_samples])
+        offset = self.to_offset(offset_raw)   # torch.Size([1, 2, 4096, 1, num_monocular_samples])
 
         # Sample from the depth distribution.
-        index, pdf_i = self.sampler.sample(pdf, deterministic, gaussians_per_pixel)
-        offset = self.sampler.gather(index, offset)
-
+        index, pdf_i = self.sampler.sample(pdf, deterministic, gaussians_per_pixel)  # torch.Size([1, 2, 4096, 1, num_gaussians_per_pixel]), torch.Size([1, 2, 4096, 1, num_gaussians_per_pixel])
+        offset = self.sampler.gather(index, offset)  # torch.Size([1, 2, 4096, 1, num_gaussians_per_pixel])
+        # breakpoint()
         # Convert the sampled bucket and offset to a depth.
         relative_disparity = (index + offset) / s
         depth = relative_disparity_to_depth(
             relative_disparity,
             rearrange(near, "b v -> b v () () ()"),
             rearrange(far, "b v -> b v () () ()"),
-        )
+        )      # torch.Size([1, 2, 4096, 1, num_gaussians_per_pixel])
 
         # Compute opacity from PDF.
         if self.use_transmittance:
@@ -76,6 +78,6 @@ class DepthPredictorMonocular(nn.Module):
             opacity = pdf / (1 - partial + 1e-10)
             opacity = self.sampler.gather(index, opacity)
         else:
-            opacity = pdf_i
+            opacity = pdf_i   # torch.Size([1, 2, 4096, 1, num_gaussians_per_pixel])
 
         return depth, opacity

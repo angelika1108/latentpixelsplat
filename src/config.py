@@ -52,6 +52,7 @@ class RootCfg:
     train: TrainCfg
     seed: int
     decoder_latent_type: str | None
+    decoder_latent_dim: int | None
     freeze_latent: bool
     load_pretrained_encoder: str | None
     load_pretrained_latent_decoder: bool

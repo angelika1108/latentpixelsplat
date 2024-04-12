@@ -87,6 +87,13 @@ python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' 
 python3 -m src.main +experiment=acid wandb.tags=[acid,256x256,num_monocular_samples] exp_name='exp' hydra.run.dir='outputs/exp' data_loader.train.batch_size=1 checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000 model.encoder.gaussians_per_pixel=1 model.encoder.num_monocular_samples=1
 
 
+# latent_channels = 6
+python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' decoder_latent_dim=6 model.encoder.d_latent=6 model.decoder.d_latent=6 data_loader.train.batch_size=1 checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000
+
+# latent_channels = 3
+python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' decoder_latent_dim=3 model.encoder.d_latent=3 model.decoder.d_latent=3 data_loader.train.batch_size=1 checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000
+
+
 
 
 # Metrics

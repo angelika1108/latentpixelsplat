@@ -73,26 +73,29 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         self.epipolar_transformer_upscale = cfg.epipolar_transformer.upscale
 
         self.encoder_latent_type = cfg.encoder_latent_type  # "medium" or "tiny" or None
+        self.d_latent = cfg.d_latent
 
         if self.encoder_latent_type is None:
             self.encoder_latent = None
-            self.d_latent = 3
+            # self.d_latent = 3
 
         elif self.encoder_latent_type == "medium":
-            config_path = "config/model/encoder/latent/config_vq-f4-noattn.yaml"
+            config_path = "config/model/encoder/latent_medium/config_vq-f4-noattn.yaml"
             with open(config_path, 'r') as file:
                 config = yaml.safe_load(file)
             self.encoder_latent = EncoderLatent(
                 **config['model']['params']['ddconfig'], **config['model']['params'])
-            self.d_latent = config['model']['params']['embed_dim']
+            # self.d_latent = config['model']['params']['embed_dim']
 
         elif self.encoder_latent_type == "tiny":
-            config_path = "config/model/encoder/latent/latent_tiny.yaml"
-            with open(config_path, 'r') as file:
-                config = yaml.safe_load(file)
             self.encoder_latent = EncoderLatentTiny(
-                d_in=config['d_in'], d_out=config['d_out'])  #, downsample=8
-            self.d_latent = config['d_out']
+                d_in=3, d_out=self.d_latent, downsample=4)
+            # config_path = "config/model/encoder/latent/latent_tiny.yaml"
+            # with open(config_path, 'r') as file:
+            #     config = yaml.safe_load(file)
+            # self.encoder_latent = EncoderLatentTiny(
+            #     d_in=config['d_in'], d_out=config['d_out'], downsample=4)
+            # self.d_latent = config['d_out']
 
         else:
             raise ValueError(
@@ -116,7 +119,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             cfg.use_transmittance,
         )
         self.gaussian_adapter = GaussianAdapter(
-            cfg.gaussian_adapter, cfg.d_latent)
+            cfg.gaussian_adapter, self.d_latent)
 
         if cfg.predict_opacity:
             self.to_opacity = nn.Sequential(
@@ -133,7 +136,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             ),
         )
 
-        if self.d_latent == 4:
+        if self.d_latent in [4, 5, 6]:
             self.to_gaussians_2 = nn.Sequential(
                 nn.ReLU(),
                 nn.Linear(
@@ -224,7 +227,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 # Input channels: 3, output channels: 3
                 skip = self.encoder_latent(skip)
             elif isinstance(self.encoder_latent, EncoderLatentTiny):
-                # Input channels: 3, output channels: 4
+                # Input channels: 3, output channels: d_latent
                 skip = self.encoder_latent(skip)
             else:
                 raise ValueError("Unknown latent encoder type")
@@ -304,7 +307,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         )
 
         #######################################################################
-        if self.d_latent == 4:
+        if self.d_latent in [4, 5, 6]:
             gaussians_2 = rearrange(
                 self.to_gaussians_2(features),
                 "... (srf c) -> ... srf c",
@@ -369,7 +372,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                     "b v r srf spp -> b (v r srf spp)",
                 ),
             )
-        elif self.d_latent == 4:
+        elif self.d_latent in [4, 5, 6]:
             return Gaussians(
                 rearrange(
                     gaussians.means,

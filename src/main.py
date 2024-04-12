@@ -115,29 +115,27 @@ def train(cfg_dict: DictConfig):
     torch.manual_seed(cfg_dict.seed + trainer.global_rank)
 
     encoder, encoder_visualizer = get_encoder(cfg.model.encoder)
-    
-    decoder_latent_type = cfg.decoder_latent_type
-    
-    if decoder_latent_type is None:
+        
+    if cfg.decoder_latent_type is None:
         decoder_latent = None
 
-    elif decoder_latent_type == "medium":
-        config_path = "config/model/decoder/latent/config_vq-f4-noattn.yaml"
+    elif cfg.decoder_latent_type == "medium":
+        config_path = "config/model/decoder/latent_medium/config_vq-f4-noattn.yaml"
         with open(config_path, 'r') as file:
             config = yaml.safe_load(file)
         
         decoder_latent = DecoderLatent(
             **config['model']['params']['ddconfig'], **config['model']['params'])
     
-    elif decoder_latent_type == "tiny":
-        config_path = "config/model/decoder/latent/latent_tiny.yaml"
-        with open(config_path, 'r') as file:
-            config = yaml.safe_load(file)
-
-        decoder_latent = DecoderLatentTiny(d_in=config['d_in'], d_out=config['d_out'])  # , upsample=8
+    elif cfg.decoder_latent_type == "tiny":
+        decoder_latent = DecoderLatentTiny(d_in=cfg.decoder_latent_dim, d_out=3, upsample=4)
+        # config_path = "config/model/decoder/latent/latent_tiny.yaml"
+        # with open(config_path, 'r') as file:
+        #     config = yaml.safe_load(file)
+        # decoder_latent = DecoderLatentTiny(d_in=config['d_in'], d_out=config['d_out'], upsample=4)
     
     else:
-        raise ValueError(f"Unknown decoder_latent_type: {decoder_latent_type}")
+        raise ValueError(f"Unknown decoder_latent_type: {cfg.decoder_latent_type}")
 
 
     model_wrapper = ModelWrapper(
@@ -196,10 +194,10 @@ def train(cfg_dict: DictConfig):
             decoder_latent_init = torch.load(decoder_latent_init_path)
             model_wrapper.decoder_latent.load_state_dict(decoder_latent_init)
         else:
-            raise ValueError(f"Unknown decoder_latent_type or not implemented yet: {decoder_latent_type}")
+            raise ValueError(f"Unknown decoder_latent_type or not implemented yet: {cfg.decoder_latent_type}")
 
 
-    if cfg.freeze_latent and decoder_latent_type is not None:
+    if cfg.freeze_latent and cfg.decoder_latent_type is not None:
         print('==> Freeze latent encoder and decoder')
         # model_wrapper.decoder_latent.state_dict().keys()
         # model_wrapper.decoder_latent.state_dict()['quantize.embedding.weight'].requires_grad
