@@ -59,6 +59,7 @@ class TestCfg:
 class TrainCfg:
     depth_mode: DepthRenderingMode | None
     extended_visualization: bool
+    depth_sample_deterministic: bool
 
 
 @runtime_checkable
@@ -126,9 +127,9 @@ class ModelWrapper(LightningModule):
 
         # Run the model.
         if self.d_latent == 3:
-            gaussians = self.encoder(batch["context"], self.global_step, False)
+            gaussians = self.encoder(batch["context"], self.global_step, deterministic=self.train_cfg.depth_sample_deterministic)
         elif self.d_latent in [4, 5, 6]:
-            gaussians, gaussians_2 = self.encoder(batch["context"], self.global_step, True)
+            gaussians, gaussians_2 = self.encoder(batch["context"], self.global_step, deterministic=self.train_cfg.depth_sample_deterministic)
         else:
             raise ValueError(f"Invalid d_latent: {self.d_latent}")
 
@@ -225,14 +226,14 @@ class ModelWrapper(LightningModule):
                 gaussians = self.encoder(
                     batch["context"],
                     self.global_step,
-                    deterministic=False,
+                    deterministic=self.train_cfg.depth_sample_deterministic,
                 )
         elif self.d_latent in [4, 5, 6]:
             with self.benchmarker.time("encoder"):
                 gaussians, gaussians_2 = self.encoder(
                     batch["context"],
                     self.global_step,
-                    deterministic=False,
+                    deterministic=self.train_cfg.depth_sample_deterministic,
                 )
         else:
             raise ValueError(f"Invalid d_latent: {self.d_latent}")
@@ -306,8 +307,13 @@ class ModelWrapper(LightningModule):
         (scene,) = batch["scene"]
         name = get_cfg()["wandb"]["name"]
         path = self.test_cfg.output_path / name
-        for index, color in zip(batch["target"]["index"][0], output.color[0]):
+        for index, color in zip(batch["target"]["index"][0], color[0]):
             save_image(color, path / scene / f"color/{index:0>6}.png")
+        for index, color in zip(
+            batch["context"]["index"][0], batch["context"]["image"][0]
+        ):
+            save_image(color, path / scene / f"context/{index:0>6}.png")
+
 
     def on_test_end(self) -> None:
         name = get_cfg()["wandb"]["name"]

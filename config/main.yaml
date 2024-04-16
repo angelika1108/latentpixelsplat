@@ -51,6 +51,7 @@ checkpointing:
 train:
   depth_mode: null
   extended_visualization: false
+  depth_sample_deterministic: false
 
 test:
   output_path: outputs/test
