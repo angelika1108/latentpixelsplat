@@ -70,8 +70,6 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             nn.Linear(self.backbone.d_out, cfg.d_feature),
         )
 
-        self.epipolar_transformer_upscale = cfg.epipolar_transformer.upscale
-
         self.encoder_latent_type = cfg.encoder_latent_type  # "medium" or "tiny" or None
         self.d_latent = cfg.d_latent
 
@@ -90,12 +88,6 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         elif self.encoder_latent_type == "tiny":
             self.encoder_latent = EncoderLatentTiny(
                 d_in=3, d_out=self.d_latent, downsample=4)
-            # config_path = "config/model/encoder/latent/latent_tiny.yaml"
-            # with open(config_path, 'r') as file:
-            #     config = yaml.safe_load(file)
-            # self.encoder_latent = EncoderLatentTiny(
-            #     d_in=config['d_in'], d_out=config['d_out'], downsample=4)
-            # self.d_latent = config['d_out']
 
         else:
             raise ValueError(
@@ -209,13 +201,6 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         # t_epipolar_transformer = time.time() - t0
         # torch.cuda.synchronize()
         # t0 = time.time()
-
-        # if self.epipolar_transformer_upscale:
-        #     features = rearrange(features, "b v c h w -> (b v) c h w")
-        #     features = F.interpolate(features, size=(
-        #         h//self.epipolar_transformer_upscale, w//self.epipolar_transformer_upscale), mode="bilinear", align_corners=False)
-        #     features = rearrange(
-        #         features, "(b v) c h w -> b v c h w", b=b, v=v)
         
         # Add the high-resolution skip connection.
         skip = rearrange(context["image"], "b v c h w -> (b v) c h w")
@@ -236,12 +221,6 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         # t_latent_encoder = time.time() - t0
         # torch.cuda.synchronize()
         # t0 = time.time()
-
-
-        # if self.feature_downscaler is not None:
-        #     features = rearrange(features, "b v c h w -> (b v) c h w")
-        #     features = self.feature_downscaler(features)
-        #     features = rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
 
         skip = self.high_resolution_skip(skip)
         
@@ -267,12 +246,6 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         # t0 = time.time()
 
         # Convert the features and depths into Gaussians.
-        # if self.encoder_latent_type is not None:
-        #     h_down = h // self.downsample
-        #     w_down = w // self.downsample
-        # else:
-        #     h_down = h
-        #     w_down = w
 
         if self.encoder_latent_type is not None:
             h_down = h // self.downsample

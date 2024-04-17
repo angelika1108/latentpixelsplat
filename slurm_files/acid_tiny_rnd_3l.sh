@@ -10,12 +10,12 @@
 #SBATCH --cpus-per-task=10           			   # number of cores per task (1/4 of the 4-GPUs node)
 # /!\ Caution, "multithread" in Slurm vocabulary refers to hyperthreading.
 #SBATCH --hint=nomultithread         			   # hyperthreading is deactivated
-#SBATCH --time=99:00:00             			   # maximum execution time requested (HH:MM:SS)
+#SBATCH --time=20:00:00             			   # maximum execution time requested (HH:MM:SS)
 ##SBATCH --time=00:10:00             			   # maximum execution time requested (HH:MM:SS)
 #SBATCH --output=slurm_logs/acid_tiny_rnd_3l_%j.output   # name of output file
 #SBATCH --error=slurm_logs/acid_tiny_rnd_3l_%j.error     # name of error file (here, in common with the output file)
-#SBATCH --qos=qos_gpu-t4                          # for running (max 100h)
-##SBATCH --qos=qos_gpu-t3                          # for running (max 20h)
+##SBATCH --qos=qos_gpu-t4                          # for running (max 100h)
+#SBATCH --qos=qos_gpu-t3                           # for running (max 20h)
 ##SBATCH --qos=qos_gpu-dev                          # for verifying that the code is running.
 
 EXP_NAME="acid_tiny_rnd_3l"
@@ -33,4 +33,4 @@ conda activate psplat
 set -x
 
 # Code execution
-srun python3 -m src.main +experiment=acid exp_name=${EXP_NAME} hydra.run.dir=${RUN_DIR} decoder_latent_dim=3 model.encoder.d_latent=3 model.decoder.d_latent=3 trainer.devices=4 trainer.num_nodes=1 data_loader.train.batch_size=1 wandb.mode=offline wandb.tags=[acid,256x256,d_latent] checkpointing.every_n_train_steps=10000
+srun python3 -m src.main +experiment=acid exp_name=${EXP_NAME} hydra.run.dir=${RUN_DIR} decoder_latent_dim=3 model.encoder.d_latent=3 model.decoder.d_latent=3 trainer.devices=4 trainer.num_nodes=1 data_loader.train.batch_size=1 wandb.mode=offline wandb.tags=[acid,256x256,d_latent] loss.lpips.apply_after_step=40000 trainer.max_steps=80000 checkpointing.every_n_train_steps=10000
