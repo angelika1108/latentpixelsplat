@@ -307,7 +307,7 @@ class ModelWrapper(LightningModule):
         (scene,) = batch["scene"]
         name = get_cfg()["wandb"]["name"]
         path = self.test_cfg.output_path / name
-        for index, color in zip(batch["target"]["index"][0], color[0]):
+        for index, color in zip(batch["target"]["index"][0], output.color[0]):
             save_image(color, path / scene / f"color/{index:0>6}.png")
         for index, color in zip(
             batch["context"]["index"][0], batch["context"]["image"][0]

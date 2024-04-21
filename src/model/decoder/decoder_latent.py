@@ -356,6 +356,7 @@ class Clamp(nn.Module):
 class DecoderLatentTiny(nn.Module):
     def __init__(self, d_in=4, d_out=3, upsample=4) -> None:
         super().__init__()
+        assert d_out == 3
         self.upsample = upsample
 
         if self.upsample == 4:
@@ -373,8 +374,14 @@ class DecoderLatentTiny(nn.Module):
             Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
             Block(64, 64), nn.Conv2d(64, d_out, 3, padding=1),
             )
+        elif self.upsample == 2:
+            self.layers = nn.Sequential(
+            Clamp(), nn.Conv2d(d_in, 64, 3, padding=1), nn.ReLU(),
+            Block(64, 64), Block(64, 64), Block(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
+            Block(64, 64), nn.Conv2d(64, d_out, 3, padding=1),
+            )
         else:
-            raise ValueError("Upsample factor must be 4 or 8")
+            raise ValueError("Upsample factor must be 2, 4 or 8")
 
     def forward(self, x):
         # Merge the batch dimensions.
