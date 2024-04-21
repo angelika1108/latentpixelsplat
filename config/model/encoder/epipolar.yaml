@@ -55,3 +55,4 @@ use_transmittance: false
 
 encoder_latent_type: tiny
 d_latent: 4
+gaussian_grid_size: [256, 256]

@@ -49,6 +49,7 @@ class EncoderEpipolarCfg:
     use_transmittance: bool
     encoder_latent_type: str | None
     d_latent: int
+    gaussian_grid_size: list[int]
 
 
 class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
@@ -253,7 +254,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         else:
             h_down = h // dowsample_factor
             w_down = w // dowsample_factor
-
+        
         # breakpoint()
         xy_ray, _ = sample_image_grid((h_down, w_down), device)
         xy_ray = rearrange(xy_ray, "h w xy -> (h w) () xy")
@@ -276,7 +277,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             depths,
             self.map_pdf_to_opacity(densities, global_step) / gpp,
             rearrange(gaussians_1[..., 2:], "b v r srf c -> b v r srf () c"),
-            (h_down, w_down),
+            (self.cfg.gaussian_grid_size[0], self.cfg.gaussian_grid_size[1]),  # or (h_down, w_down)
         )
 
         #######################################################################
@@ -295,7 +296,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 depths,
                 self.map_pdf_to_opacity(densities, global_step) / gpp,
                 rearrange(gaussians_2, "b v r srf c -> b v r srf () c"),
-                (h_down, w_down),
+                (self.cfg.gaussian_grid_size[0], self.cfg.gaussian_grid_size[1]),  # or (h_down, w_down)
             )
 
 
