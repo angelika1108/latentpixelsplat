@@ -95,6 +95,13 @@ python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' 
 python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' decoder_latent_dim=3 model.encoder.d_latent=3 model.decoder.d_latent=3 data_loader.train.batch_size=1 checkpointing.every_n_train_steps=10000 trainer.val_check_interval=30 optimizer.warm_up_steps=1000
 
 
+# Train without checkpoint gaussian grid size 256x256
+python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' data_loader.train.batch_size=1 trainer.val_check_interval=30 optimizer.warm_up_steps=1000 checkpointing.every_n_train_steps=2000
+
+
+# Train tiny_norm
+python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' data_loader.train.batch_size=1 trainer.val_check_interval=30 optimizer.warm_up_steps=1000 checkpointing.every_n_train_steps=2000 decoder_latent_type=tiny_norm model.encoder.encoder_latent_type=tiny_norm
+
 
 
 # Metrics

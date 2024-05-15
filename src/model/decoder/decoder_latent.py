@@ -339,9 +339,9 @@ class Block(nn.Module):
         super().__init__()
         self.conv = nn.Sequential(nn.Conv2d(d_in, d_out, 3, padding=1), 
                                   nn.ReLU(), 
-                                  nn.Conv2d(d_in, d_out, 3, padding=1), 
+                                  nn.Conv2d(d_out, d_out, 3, padding=1), 
                                   nn.ReLU(), 
-                                  nn.Conv2d(d_in, d_out, 3, padding=1)
+                                  nn.Conv2d(d_out, d_out, 3, padding=1)
                                   )
         self.skip = nn.Conv2d(d_in, d_out, 1, bias=False) if d_in != d_out else nn.Identity()
         self.relu = nn.ReLU()
@@ -392,4 +392,62 @@ class DecoderLatentTiny(nn.Module):
         features = features.clamp(0, 1)
 
         return features # if separate batch dimensions: rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
+
+
+
+
+# From https://github.com/madebyollin/taesd
+class BlockWithNorm(nn.Module):
+    def __init__(self, d_in, d_out):
+        super().__init__()
+        self.conv = nn.Sequential(nn.Conv2d(d_in, d_out, 3, padding=1, bias=False), 
+                                  nn.BatchNorm2d(d_out),
+                                  nn.ReLU(inplace=True), 
+                                  nn.Conv2d(d_out, d_out, 3, padding=1, bias=False), 
+                                  nn.BatchNorm2d(d_out),
+                                  nn.ReLU(inplace=True), 
+                                  nn.Conv2d(d_out, d_out, 3, padding=1, bias=False),
+                                  nn.BatchNorm2d(d_out)
+                                  )
+        self.skip = nn.Conv2d(d_in, d_out, 1, bias=False) if d_in != d_out else nn.Identity()
+        self.relu = nn.ReLU(inplace=True)
+    def forward(self, x):
+        return self.relu(self.conv(x) + self.skip(x))
+
+
+# Adapted from https://github.com/madebyollin/taesd
+class DecoderLatentTinyWithNorm(nn.Module):
+    def __init__(self, d_in=4, d_out=3, upsample=4) -> None:
+        super().__init__()
+        assert d_out == 3
+        self.upsample = upsample
+
+        if self.upsample == 4:
+            self.layers = nn.Sequential(
+            Clamp(), nn.Conv2d(d_in, 64, 3, padding=1), nn.ReLU(),
+            BlockWithNorm(64, 64), BlockWithNorm(64, 64), BlockWithNorm(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
+            BlockWithNorm(64, 64), BlockWithNorm(64, 64), BlockWithNorm(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
+            BlockWithNorm(64, 64), nn.Conv2d(64, d_out, 3, padding=1),
+            )
+        elif self.upsample == 8:
+            self.layers = nn.Sequential(
+            Clamp(), nn.Conv2d(d_in, 64, 3, padding=1), nn.ReLU(),
+            BlockWithNorm(64, 64), BlockWithNorm(64, 64), BlockWithNorm(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
+            BlockWithNorm(64, 64), BlockWithNorm(64, 64), BlockWithNorm(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
+            BlockWithNorm(64, 64), BlockWithNorm(64, 64), BlockWithNorm(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
+            BlockWithNorm(64, 64), nn.Conv2d(64, d_out, 3, padding=1),
+            )
+        elif self.upsample == 2:
+            self.layers = nn.Sequential(
+            Clamp(), nn.Conv2d(d_in, 64, 3, padding=1), nn.ReLU(),
+            BlockWithNorm(64, 64), BlockWithNorm(64, 64), BlockWithNorm(64, 64), nn.Upsample(scale_factor=2), nn.Conv2d(64, 64, 3, padding=1, bias=False),
+            BlockWithNorm(64, 64), nn.Conv2d(64, d_out, 3, padding=1),
+            )
+        else:
+            raise ValueError("Upsample factor must be 2, 4 or 8")
+
+    def forward(self, x):
+        features = self.layers(x)
+        features = features.clamp(0, 1)
+        return features
 

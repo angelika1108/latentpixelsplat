@@ -1,4 +1,4 @@
-from .encoder_latent import EncoderLatent, EncoderLatentTiny
+from .encoder_latent import EncoderLatent, EncoderLatentTiny, EncoderLatentTinyWithNorm
 from .visualization.encoder_visualizer_epipolar_cfg import EncoderVisualizerEpipolarCfg
 from .epipolar.epipolar_transformer import EpipolarTransformer, EpipolarTransformerCfg
 from .epipolar.depth_predictor_monocular import DepthPredictorMonocular
@@ -71,7 +71,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             nn.Linear(self.backbone.d_out, cfg.d_feature),
         )
 
-        self.encoder_latent_type = cfg.encoder_latent_type  # "medium" or "tiny" or None
+        self.encoder_latent_type = cfg.encoder_latent_type
         self.d_latent = cfg.d_latent
 
         if self.encoder_latent_type is None:
@@ -88,6 +88,10 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
 
         elif self.encoder_latent_type == "tiny":
             self.encoder_latent = EncoderLatentTiny(
+                d_in=3, d_out=self.d_latent, downsample=4)
+        
+        elif self.encoder_latent_type == "tiny_norm":
+            self.encoder_latent = EncoderLatentTinyWithNorm(
                 d_in=3, d_out=self.d_latent, downsample=4)
 
         else:
@@ -213,6 +217,9 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 # Input channels: 3, output channels: 3
                 skip = self.encoder_latent(skip)
             elif isinstance(self.encoder_latent, EncoderLatentTiny):
+                # Input channels: 3, output channels: d_latent
+                skip = self.encoder_latent(skip)
+            elif isinstance(self.encoder_latent, EncoderLatentTinyWithNorm):
                 # Input channels: 3, output channels: d_latent
                 skip = self.encoder_latent(skip)
             else:

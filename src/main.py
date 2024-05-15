@@ -31,7 +31,7 @@ with install_import_hook(
     from src.model.decoder import get_decoder
     from src.model.encoder import get_encoder
     from src.model.model_wrapper import ModelWrapper
-    from src.model.decoder.decoder_latent import DecoderLatent, DecoderLatentTiny
+    from src.model.decoder.decoder_latent import DecoderLatent, DecoderLatentTiny, DecoderLatentTinyWithNorm
 
 
 def cyan(text: str) -> str:
@@ -134,6 +134,9 @@ def train(cfg_dict: DictConfig):
         #     config = yaml.safe_load(file)
         # decoder_latent = DecoderLatentTiny(d_in=config['d_in'], d_out=config['d_out'], upsample=4)
     
+    elif cfg.decoder_latent_type == "tiny_norm":
+        decoder_latent = DecoderLatentTinyWithNorm(d_in=cfg.decoder_latent_dim, d_out=3, upsample=4)
+
     else:
         raise ValueError(f"Unknown decoder_latent_type: {cfg.decoder_latent_type}")
 
