@@ -112,9 +112,9 @@ class ModelWrapper(LightningModule):
         self.data_shim = get_data_shim(self.encoder)
         self.losses = nn.ModuleList(losses)
 
-        self.downsample = self.decoder_latent.upsample
-        self.d_latent = self.decoder.d_latent
-
+        self.downsample = self.decoder_latent.upsample if self.decoder_latent is not None else None
+        self.d_latent = self.decoder.d_latent if self.encoder.encoder_latent_type is not None else 3
+        
         # This is used for testing.
         self.benchmarker = Benchmarker()
 

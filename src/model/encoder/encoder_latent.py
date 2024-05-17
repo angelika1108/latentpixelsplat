@@ -355,57 +355,46 @@ class EncoderLatentTiny(nn.Module):
 
 
 # From https://github.com/madebyollin/taesd
-class BlockWithNorm(nn.Module):
-    def __init__(self, d_in, d_out):
-        super().__init__()
-        self.conv = nn.Sequential(nn.Conv2d(d_in, d_out, 3, padding=1, bias=False), 
-                                  nn.BatchNorm2d(d_out),
-                                  nn.ReLU(inplace=True), 
-                                  nn.Conv2d(d_out, d_out, 3, padding=1, bias=False), 
-                                  nn.BatchNorm2d(d_out),
-                                  nn.ReLU(inplace=True), 
-                                  nn.Conv2d(d_out, d_out, 3, padding=1, bias=False),
-                                  nn.BatchNorm2d(d_out)
-                                  )
-        self.skip = nn.Conv2d(d_in, d_out, 1, bias=False) if d_in != d_out else nn.Identity()
-        self.relu = nn.ReLU(inplace=True)
-    def forward(self, x):
-        return self.relu(self.conv(x) + self.skip(x))
+# class BlockWithNorm(nn.Module):
+#     def __init__(self, d_in, d_out):
+#         super().__init__()
+#         self.conv = nn.Sequential(nn.Conv2d(d_in, d_out, 3, padding=1, bias=False), 
+#                                   nn.BatchNorm2d(d_out),
+#                                   nn.ReLU(inplace=True), 
+#                                   nn.Conv2d(d_out, d_out, 3, padding=1, bias=False), 
+#                                   nn.BatchNorm2d(d_out),
+#                                   nn.ReLU(inplace=True), 
+#                                   nn.Conv2d(d_out, d_out, 3, padding=1, bias=False),
+#                                   nn.BatchNorm2d(d_out)
+#                                   )
+#         self.skip = nn.Conv2d(d_in, d_out, 1, bias=False) if d_in != d_out else nn.Identity()
+#         self.relu = nn.ReLU(inplace=True)
+#     def forward(self, x):
+#         return self.relu(self.conv(x) + self.skip(x))
 
 
-# Adapted from https://github.com/madebyollin/taesd
+# Adapted from https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
 class EncoderLatentTinyWithNorm(nn.Module):
     def __init__(self, d_in=3, d_out=4, downsample=4) -> None:
         super().__init__()
         assert d_in == 3
         self.downsample = downsample
-        
+
         if self.downsample == 4:
-            self.layers = nn.Sequential(
-            nn.Conv2d(d_in, 64, 3, padding=1), BlockWithNorm(64, 64),
-            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), BlockWithNorm(64, 64), BlockWithNorm(64, 64), BlockWithNorm(64, 64),
-            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), BlockWithNorm(64, 64), BlockWithNorm(64, 64), BlockWithNorm(64, 64),
-            nn.Conv2d(64, d_out, 3, padding=1),
-            )
-        elif self.downsample == 8:
-            self.layers = nn.Sequential(
-            nn.Conv2d(d_in, 64, 3, padding=1), BlockWithNorm(64, 64),
-            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), BlockWithNorm(64, 64), BlockWithNorm(64, 64), BlockWithNorm(64, 64),
-            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), BlockWithNorm(64, 64), BlockWithNorm(64, 64), BlockWithNorm(64, 64),
-            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), BlockWithNorm(64, 64), BlockWithNorm(64, 64), BlockWithNorm(64, 64),
-            nn.Conv2d(64, d_out, 3, padding=1),
-            )
-        elif self.downsample == 2:
-            self.layers = nn.Sequential(
-            nn.Conv2d(d_in, 64, 3, padding=1), BlockWithNorm(64, 64),
-            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), BlockWithNorm(64, 64), BlockWithNorm(64, 64), BlockWithNorm(64, 64),
-            nn.Conv2d(64, d_out, 3, padding=1),
-            )
+            self.layers = nn.Sequential(nn.Conv2d(d_in, 64, 3, padding=1, bias=False), nn.BatchNorm2d(64), nn.ReLU(inplace=True),
+                                        nn.Conv2d(64, 64, 3, padding=1, bias=False), nn.BatchNorm2d(64), nn.ReLU(inplace=True),
+                                        nn.MaxPool2d(2), 
+                                        nn.Conv2d(64, 128, 3, padding=1, bias=False), nn.BatchNorm2d(128), nn.ReLU(inplace=True),
+                                        nn.Conv2d(128, 128, 3, padding=1, bias=False), nn.BatchNorm2d(128), nn.ReLU(inplace=True),
+                                        nn.MaxPool2d(2), 
+                                        nn.Conv2d(128, 256, 3, padding=1, bias=False), nn.BatchNorm2d(256), nn.ReLU(inplace=True),
+                                        nn.Conv2d(256, 256, 3, padding=1, bias=False), nn.BatchNorm2d(256), nn.ReLU(inplace=True),
+                                        nn.Conv2d(256, d_out, 1))
+
         else:
-            raise ValueError("downsample must be 2, 4 or 8")
-    
+            raise ValueError("Downsample factor must be 4")
+
     def forward(self, x):
-        # Input image has to be in the range [0, 1]
         features = self.layers(x)
-        return features
+        return features 
 

@@ -129,10 +129,6 @@ def train(cfg_dict: DictConfig):
     
     elif cfg.decoder_latent_type == "tiny":
         decoder_latent = DecoderLatentTiny(d_in=cfg.decoder_latent_dim, d_out=3, upsample=4)
-        # config_path = "config/model/decoder/latent/latent_tiny.yaml"
-        # with open(config_path, 'r') as file:
-        #     config = yaml.safe_load(file)
-        # decoder_latent = DecoderLatentTiny(d_in=config['d_in'], d_out=config['d_out'], upsample=4)
     
     elif cfg.decoder_latent_type == "tiny_norm":
         decoder_latent = DecoderLatentTinyWithNorm(d_in=cfg.decoder_latent_dim, d_out=3, upsample=4)

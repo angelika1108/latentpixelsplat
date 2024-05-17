@@ -76,7 +76,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
 
         if self.encoder_latent_type is None:
             self.encoder_latent = None
-            # self.d_latent = 3
+            self.d_latent = 3
 
         elif self.encoder_latent_type == "medium":
             config_path = "config/model/encoder/latent_medium/config_vq-f4-noattn.yaml"
@@ -89,7 +89,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         elif self.encoder_latent_type == "tiny":
             self.encoder_latent = EncoderLatentTiny(
                 d_in=3, d_out=self.d_latent, downsample=4)
-        
+
         elif self.encoder_latent_type == "tiny_norm":
             self.encoder_latent = EncoderLatentTinyWithNorm(
                 d_in=3, d_out=self.d_latent, downsample=4)
@@ -124,7 +124,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 nn.Linear(cfg.d_feature, 1),
                 nn.Sigmoid(),
             )
-        
+
         self.to_gaussians = nn.Sequential(
             nn.ReLU(),
             nn.Linear(
@@ -138,7 +138,8 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 nn.ReLU(),
                 nn.Linear(
                     cfg.d_feature,
-                    cfg.num_surfaces * (self.gaussian_adapter.d_in - 7), # don't predict the first 7 parameters (scales and rotations) and the offset_xy, in total 9 parameters
+                    # don't predict the first 7 parameters (scales and rotations) and the offset_xy, in total 9 parameters
+                    cfg.num_surfaces * (self.gaussian_adapter.d_in - 7),
                 ),
             )
 
@@ -147,7 +148,6 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             nn.ReLU(),
         )
 
-        # self.feature_downscaler = nn.Conv2d(cfg.d_feature, cfg.d_feature, 2, 2) if self.downsample == 8 else None
 
     def map_pdf_to_opacity(
         self,
@@ -166,11 +166,11 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         return 0.5 * (1 - (1 - pdf) ** exponent + pdf ** (1 / exponent))
 
     def forward(
-        self,
-        context: dict,
-        global_step: int,
-        deterministic: bool = False,
-        visualization_dump: Optional[dict] = None):
+            self,
+            context: dict,
+            global_step: int,
+            deterministic: bool = False,
+            visualization_dump: Optional[dict] = None):
 
         # torch.cuda.synchronize()
         # t0 = time.time()
@@ -206,7 +206,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         # t_epipolar_transformer = time.time() - t0
         # torch.cuda.synchronize()
         # t0 = time.time()
-        
+
         # Add the high-resolution skip connection.
         skip = rearrange(context["image"], "b v c h w -> (b v) c h w")
 
@@ -231,12 +231,14 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         # t0 = time.time()
 
         skip = self.high_resolution_skip(skip)
-        
-        if self.encoder_latent is None:
-            skip = F.interpolate(skip, size=(features.shape[3], features.shape[4]), mode="bilinear", align_corners=True)
-        
+
+        if (self.encoder_latent is None) and ((features.shape[3], features.shape[4]) != (skip.shape[2], skip.shape[3])):
+            skip = F.interpolate(skip, size=(
+                    features.shape[3], features.shape[4]), mode="bilinear", align_corners=True)
+
         features = features + \
             rearrange(skip, "(b v) c h w -> b v c h w", b=b, v=v)
+
 
         # Sample depths from the resulting features.
         features = rearrange(features, "b v c h w -> b v (h w) c")
@@ -261,7 +263,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         else:
             h_down = h // dowsample_factor
             w_down = w // dowsample_factor
-        
+
         # breakpoint()
         xy_ray, _ = sample_image_grid((h_down, w_down), device)
         xy_ray = rearrange(xy_ray, "h w xy -> (h w) () xy")
@@ -284,7 +286,8 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             depths,
             self.map_pdf_to_opacity(densities, global_step) / gpp,
             rearrange(gaussians_1[..., 2:], "b v r srf c -> b v r srf () c"),
-            (self.cfg.gaussian_grid_size[0], self.cfg.gaussian_grid_size[1]),  # or (h_down, w_down)
+            # or (h_down, w_down)
+            (self.cfg.gaussian_grid_size[0], self.cfg.gaussian_grid_size[1]),
         )
 
         #######################################################################
@@ -294,18 +297,22 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 "... (srf c) -> ... srf c",
                 srf=self.cfg.num_surfaces,
             )
-            gaussians_2 = torch.cat((gaussians_1[..., 2:9], gaussians_2), dim=-1)
+            gaussians_2 = torch.cat(
+                (gaussians_1[..., 2:9], gaussians_2), dim=-1)
 
             gaussians_2 = self.gaussian_adapter.forward(
-                rearrange(context["extrinsics"], "b v i j -> b v () () () i j"),
-                rearrange(context["intrinsics"], "b v i j -> b v () () () i j"),
+                rearrange(context["extrinsics"],
+                          "b v i j -> b v () () () i j"),
+                rearrange(context["intrinsics"],
+                          "b v i j -> b v () () () i j"),
                 rearrange(xy_ray, "b v r srf xy -> b v r srf () xy"),
                 depths,
                 self.map_pdf_to_opacity(densities, global_step) / gpp,
                 rearrange(gaussians_2, "b v r srf c -> b v r srf () c"),
-                (self.cfg.gaussian_grid_size[0], self.cfg.gaussian_grid_size[1]),  # or (h_down, w_down)
+                # or (h_down, w_down)
+                (self.cfg.gaussian_grid_size[0],
+                 self.cfg.gaussian_grid_size[1]),
             )
-
 
         # torch.cuda.synchronize()
         # t_gaussian_adapter = time.time() - t0
@@ -372,26 +379,25 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                     "b v r srf spp -> b (v r srf spp)",
                 ),
             ), Gaussians(
-                    rearrange(
-                        gaussians.means,
-                        "b v r srf spp xyz -> b (v r srf spp) xyz",
-                    ),
-                    rearrange(
-                        gaussians.covariances,
-                        "b v r srf spp i j -> b (v r srf spp) i j",
-                    ),
-                    rearrange(
-                        gaussians_2.harmonics,
-                        "b v r srf spp c d_sh -> b (v r srf spp) c d_sh",
-                    ),
-                    rearrange(
-                        opacity_multiplier * gaussians.opacities,
-                        "b v r srf spp -> b (v r srf spp)",
-                    ),
-                )
+                rearrange(
+                    gaussians.means,
+                    "b v r srf spp xyz -> b (v r srf spp) xyz",
+                ),
+                rearrange(
+                    gaussians.covariances,
+                    "b v r srf spp i j -> b (v r srf spp) i j",
+                ),
+                rearrange(
+                    gaussians_2.harmonics,
+                    "b v r srf spp c d_sh -> b (v r srf spp) c d_sh",
+                ),
+                rearrange(
+                    opacity_multiplier * gaussians.opacities,
+                    "b v r srf spp -> b (v r srf spp)",
+                ),
+            )
         else:
-           raise ValueError(f"Invalid d_latent: {self.d_latent}")             
-        
+            raise ValueError(f"Invalid d_latent: {self.d_latent}")
 
     def get_data_shim(self) -> DataShim:
         def data_shim(batch: BatchedExample) -> BatchedExample:

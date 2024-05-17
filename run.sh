@@ -99,8 +99,17 @@ python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' 
 python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' data_loader.train.batch_size=1 trainer.val_check_interval=30 optimizer.warm_up_steps=1000 checkpointing.every_n_train_steps=2000
 
 
+
 # Train tiny_norm
 python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' data_loader.train.batch_size=1 trainer.val_check_interval=30 optimizer.warm_up_steps=1000 checkpointing.every_n_train_steps=2000 decoder_latent_type=tiny_norm model.encoder.encoder_latent_type=tiny_norm
+
+# Train no latent enc-dec
+python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' data_loader.train.batch_size=1 trainer.val_check_interval=30 optimizer.warm_up_steps=1000 checkpointing.every_n_train_steps=2000 decoder_latent_type=null model.encoder.encoder_latent_type=null model.encoder.epipolar_transformer.upscale=4
+
+# Train tiny enc tiny_norm dec
+python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' data_loader.train.batch_size=1 trainer.val_check_interval=30 optimizer.warm_up_steps=1000 checkpointing.every_n_train_steps=2000 decoder_latent_type=tiny_norm model.encoder.encoder_latent_type=tiny
+
+
 
 
 
