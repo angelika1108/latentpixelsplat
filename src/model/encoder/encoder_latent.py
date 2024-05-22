@@ -1,8 +1,106 @@
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-import time
 from einops import rearrange
+
+
+# From https://github.com/madebyollin/taesd
+class Block(nn.Module):
+    def __init__(self, d_in, d_out):
+        super().__init__()
+        self.conv = nn.Sequential(nn.Conv2d(d_in, d_out, 3, padding=1), 
+                                  nn.ReLU(), 
+                                  nn.Conv2d(d_out, d_out, 3, padding=1), 
+                                  nn.ReLU(), 
+                                  nn.Conv2d(d_out, d_out, 3, padding=1)
+                                  )
+        self.skip = nn.Conv2d(d_in, d_out, 1, bias=False) if d_in != d_out else nn.Identity()
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        return self.relu(self.conv(x) + self.skip(x))
+
+# From https://github.com/madebyollin/taesd
+# class BlockWithNorm(nn.Module):
+#     def __init__(self, d_in, d_out):
+#         super().__init__()
+#         self.conv = nn.Sequential(nn.Conv2d(d_in, d_out, 3, padding=1, bias=False), 
+#                                   nn.BatchNorm2d(d_out),
+#                                   nn.ReLU(inplace=True), 
+#                                   nn.Conv2d(d_out, d_out, 3, padding=1, bias=False), 
+#                                   nn.BatchNorm2d(d_out),
+#                                   nn.ReLU(inplace=True), 
+#                                   nn.Conv2d(d_out, d_out, 3, padding=1, bias=False),
+#                                   nn.BatchNorm2d(d_out)
+#                                   )
+#         self.skip = nn.Conv2d(d_in, d_out, 1, bias=False) if d_in != d_out else nn.Identity()
+#         self.relu = nn.ReLU(inplace=True)
+#     def forward(self, x):
+#         return self.relu(self.conv(x) + self.skip(x))
+
+
+# Adapted from https://github.com/madebyollin/taesd
+class EncoderLatentTiny(nn.Module):
+    def __init__(self, d_in=3, d_out=4, downsample=4) -> None:
+        super().__init__()
+        assert d_in == 3
+        self.downsample = downsample
+        
+        if self.downsample == 4:
+            self.layers = nn.Sequential(
+            nn.Conv2d(d_in, 64, 3, padding=1), Block(64, 64),
+            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
+            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
+            nn.Conv2d(64, d_out, 3, padding=1),
+            )
+        elif self.downsample == 8:
+            self.layers = nn.Sequential(
+            nn.Conv2d(d_in, 64, 3, padding=1), Block(64, 64),
+            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
+            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
+            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
+            nn.Conv2d(64, d_out, 3, padding=1),
+            )
+        elif self.downsample == 2:
+            self.layers = nn.Sequential(
+            nn.Conv2d(d_in, 64, 3, padding=1), Block(64, 64),
+            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
+            nn.Conv2d(64, d_out, 3, padding=1),
+            )
+        else:
+            raise ValueError("downsample must be 2, 4 or 8")
+    
+    def forward(self, x):
+        # Input image has to be in the range [0, 1]
+        features = self.layers(x)
+        return features
+
+
+
+# Adapted from https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
+class EncoderLatentTinyWithNorm(nn.Module):
+    def __init__(self, d_in=3, d_out=4, downsample=4) -> None:
+        super().__init__()
+        assert d_in == 3
+        self.downsample = downsample
+
+        if self.downsample == 4:
+            self.layers = nn.Sequential(nn.Conv2d(d_in, 64, 3, padding=1, bias=False), nn.BatchNorm2d(64), nn.ReLU(inplace=True),
+                                        nn.Conv2d(64, 64, 3, padding=1, bias=False), nn.BatchNorm2d(64), nn.ReLU(inplace=True),
+                                        nn.MaxPool2d(2), 
+                                        nn.Conv2d(64, 128, 3, padding=1, bias=False), nn.BatchNorm2d(128), nn.ReLU(inplace=True),
+                                        nn.Conv2d(128, 128, 3, padding=1, bias=False), nn.BatchNorm2d(128), nn.ReLU(inplace=True),
+                                        nn.MaxPool2d(2), 
+                                        nn.Conv2d(128, 256, 3, padding=1, bias=False), nn.BatchNorm2d(256), nn.ReLU(inplace=True),
+                                        nn.Conv2d(256, 256, 3, padding=1, bias=False), nn.BatchNorm2d(256), nn.ReLU(inplace=True),
+                                        nn.Conv2d(256, d_out, 1))
+
+        else:
+            raise ValueError("Downsample factor must be 4")
+
+    def forward(self, x):
+        features = self.layers(x)
+        return features 
+
 
 
 # From https://github.com/CompVis/latent-diffusion/
@@ -73,10 +171,6 @@ class EncoderLatent(nn.Module):
         self.quant_conv = torch.nn.Conv2d(z_channels, embed_dim, 1)
 
     def forward(self, x):
-
-        # torch.cuda.synchronize()
-        # t0 = time.time()
-
         # downsampling
         hs = [self.conv_in(x)]
         for i_level in range(self.num_resolutions):
@@ -88,21 +182,11 @@ class EncoderLatent(nn.Module):
             if i_level != self.num_resolutions-1:
                 hs.append(self.down[i_level].downsample(hs[-1]))
         
-        # torch.cuda.synchronize()
-        # t_downsample = time.time() - t0
-        # torch.cuda.synchronize()
-        # t0 = time.time()
-
         # middle
         h = hs[-1]
         h = self.mid.block_1(h)
         h = self.mid.attn_1(h)
         h = self.mid.block_2(h)
-
-        # torch.cuda.synchronize()
-        # t_middle = time.time() - t0
-        # torch.cuda.synchronize()
-        # t0 = time.time()
 
         # end
         h = self.norm_out(h)
@@ -110,12 +194,6 @@ class EncoderLatent(nn.Module):
         h = self.conv_out(h)
 
         h = self.quant_conv(h)
-
-        # torch.cuda.synchronize()
-        # t_end = time.time() - t0
-        # torch.cuda.synchronize()
-        # t0 = time.time()
-        # breakpoint() # 22 layers   7+15
 
         return h
 
@@ -294,107 +372,3 @@ class ResnetBlock(nn.Module):
 
         return x+h
     
-
-
-# From https://github.com/madebyollin/taesd
-class Block(nn.Module):
-    def __init__(self, d_in, d_out):
-        super().__init__()
-        self.conv = nn.Sequential(nn.Conv2d(d_in, d_out, 3, padding=1), 
-                                  nn.ReLU(), 
-                                  nn.Conv2d(d_out, d_out, 3, padding=1), 
-                                  nn.ReLU(), 
-                                  nn.Conv2d(d_out, d_out, 3, padding=1)
-                                  )
-        self.skip = nn.Conv2d(d_in, d_out, 1, bias=False) if d_in != d_out else nn.Identity()
-        self.relu = nn.ReLU()
-    def forward(self, x):
-        return self.relu(self.conv(x) + self.skip(x))
-
-# Adapted from https://github.com/madebyollin/taesd
-class EncoderLatentTiny(nn.Module):
-    def __init__(self, d_in=3, d_out=4, downsample=4) -> None:
-        super().__init__()
-        assert d_in == 3
-        self.downsample = downsample
-        
-        if self.downsample == 4:
-            self.layers = nn.Sequential(
-            nn.Conv2d(d_in, 64, 3, padding=1), Block(64, 64),
-            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
-            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
-            nn.Conv2d(64, d_out, 3, padding=1),
-            )
-        elif self.downsample == 8:
-            self.layers = nn.Sequential(
-            nn.Conv2d(d_in, 64, 3, padding=1), Block(64, 64),
-            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
-            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
-            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
-            nn.Conv2d(64, d_out, 3, padding=1),
-            )
-        elif self.downsample == 2:
-            self.layers = nn.Sequential(
-            nn.Conv2d(d_in, 64, 3, padding=1), Block(64, 64),
-            nn.Conv2d(64, 64, 3, padding=1, stride=2, bias=False), Block(64, 64), Block(64, 64), Block(64, 64),
-            nn.Conv2d(64, d_out, 3, padding=1),
-            )
-        else:
-            raise ValueError("downsample must be 2, 4 or 8")
-    
-    def forward(self, x):
-        # Merge the batch dimensions.
-        # b, v, _, h, w = context["image"].shape
-        # x = rearrange(context["image"], "b v c h w -> (b v) c h w")
-
-        # Input image has to be in the range [0, 1]
-        features = self.layers(x)
-        
-        return features # if separate batch dimensions: rearrange(features, "(b v) c h w -> b v c h w", b=b, v=v)
-
-
-
-# From https://github.com/madebyollin/taesd
-# class BlockWithNorm(nn.Module):
-#     def __init__(self, d_in, d_out):
-#         super().__init__()
-#         self.conv = nn.Sequential(nn.Conv2d(d_in, d_out, 3, padding=1, bias=False), 
-#                                   nn.BatchNorm2d(d_out),
-#                                   nn.ReLU(inplace=True), 
-#                                   nn.Conv2d(d_out, d_out, 3, padding=1, bias=False), 
-#                                   nn.BatchNorm2d(d_out),
-#                                   nn.ReLU(inplace=True), 
-#                                   nn.Conv2d(d_out, d_out, 3, padding=1, bias=False),
-#                                   nn.BatchNorm2d(d_out)
-#                                   )
-#         self.skip = nn.Conv2d(d_in, d_out, 1, bias=False) if d_in != d_out else nn.Identity()
-#         self.relu = nn.ReLU(inplace=True)
-#     def forward(self, x):
-#         return self.relu(self.conv(x) + self.skip(x))
-
-
-# Adapted from https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
-class EncoderLatentTinyWithNorm(nn.Module):
-    def __init__(self, d_in=3, d_out=4, downsample=4) -> None:
-        super().__init__()
-        assert d_in == 3
-        self.downsample = downsample
-
-        if self.downsample == 4:
-            self.layers = nn.Sequential(nn.Conv2d(d_in, 64, 3, padding=1, bias=False), nn.BatchNorm2d(64), nn.ReLU(inplace=True),
-                                        nn.Conv2d(64, 64, 3, padding=1, bias=False), nn.BatchNorm2d(64), nn.ReLU(inplace=True),
-                                        nn.MaxPool2d(2), 
-                                        nn.Conv2d(64, 128, 3, padding=1, bias=False), nn.BatchNorm2d(128), nn.ReLU(inplace=True),
-                                        nn.Conv2d(128, 128, 3, padding=1, bias=False), nn.BatchNorm2d(128), nn.ReLU(inplace=True),
-                                        nn.MaxPool2d(2), 
-                                        nn.Conv2d(128, 256, 3, padding=1, bias=False), nn.BatchNorm2d(256), nn.ReLU(inplace=True),
-                                        nn.Conv2d(256, 256, 3, padding=1, bias=False), nn.BatchNorm2d(256), nn.ReLU(inplace=True),
-                                        nn.Conv2d(256, d_out, 1))
-
-        else:
-            raise ValueError("Downsample factor must be 4")
-
-    def forward(self, x):
-        features = self.layers(x)
-        return features 
-

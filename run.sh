@@ -2,14 +2,16 @@
 # Test PixelSplat on ACID with pre-trained weights
 python3 -m src.main +experiment=acid mode=test exp_name='exp' hydra.run.dir='outputs/exp' dataset/view_sampler=evaluation checkpointing.load=pretrained_models/acid.ckpt dataset.view_sampler.index_path=assets/evaluation_index_acid.json model.encoder.epipolar_transformer.upscale=4 test.output_path=outputs/test/acid_pretrained_pixelsplat
 
-# python3 -m src.main \
-# +experiment=acid \
-# mode=test \
-# dataset/view_sampler=evaluation \
-# checkpointing.load=pretrained_models/acid.ckpt \
-# dataset.view_sampler.index_path=assets/evaluation_index_acid.json
-
-# test.output_path=outputs/test
+### Breaking down the command:
+# python3 -m src.main 
+# +experiment=acid 
+# mode=test 
+# exp_name='exp' 
+# hydra.run.dir='outputs/exp' 
+# dataset/view_sampler=evaluation checkpointing.load=pretrained_models/acid.ckpt 
+# dataset.view_sampler.index_path=assets/evaluation_index_acid.json 
+# model.encoder.epipolar_transformer.upscale=4 
+# test.output_path=outputs/test/acid_pretrained_pixelsplat
 
 
 # Test on ACID with latent encoder and decoder with pre-trained weights
@@ -56,7 +58,7 @@ python3 -m src.main +experiment=acid mode=test exp_name='acid_tiny_rnd_80k' hydr
 # model.encoder.encoder_latent_type=encoder, encoder_and_encoder_latent, null
 # load_pretrained_latent_decoder=true
 
-# model.encoder.gaussian_grid_size=[64,64] !!!!!!!!!!!!!!!!!!
+# model.encoder.gaussian_grid_size=[64,64] 
 
 # Train without checkpoint
 python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' model.encoder.gaussian_grid_size=[64,64] data_loader.train.batch_size=1 trainer.val_check_interval=30 optimizer.warm_up_steps=1000 checkpointing.every_n_train_steps=2000
@@ -127,6 +129,8 @@ python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' 
 
 # PixelSplat on ACID
 python3 -m src.scripts.compute_metrics +experiment=acid +evaluation=acid output_metrics_path=outputs/test/pixelsplat/acid/evaluation_metrics.json evaluation.methods.0.path=outputs/test/pixelsplat/acid
+
+
 
 # LatentPixelSplat
 

@@ -138,7 +138,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
                 nn.ReLU(),
                 nn.Linear(
                     cfg.d_feature,
-                    # don't predict the first 7 parameters (scales and rotations) and the offset_xy, in total 9 parameters
+                    # Don't predict the first 7 parameters (scales and rotations) and the offset_xy, in total 9 parameters
                     cfg.num_surfaces * (self.gaussian_adapter.d_in - 7),
                 ),
             )
@@ -286,7 +286,6 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             depths,
             self.map_pdf_to_opacity(densities, global_step) / gpp,
             rearrange(gaussians_1[..., 2:], "b v r srf c -> b v r srf () c"),
-            # or (h_down, w_down)
             (self.cfg.gaussian_grid_size[0], self.cfg.gaussian_grid_size[1]),
         )
 

@@ -285,7 +285,6 @@ class ModelWrapper(LightningModule):
 
         if isinstance(self.decoder_latent, DecoderLatent):    # Input channels: 3, output channels: 3
             output.color = self.decoder_latent.forward(output.color)
-            # output.color = F.interpolate(output.color, size=(h, w), mode="bilinear", align_corners=False)
             output.color = (output.color - output.color.min()) / (output.color.max() - output.color.min())
             output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
 
@@ -302,10 +301,10 @@ class ModelWrapper(LightningModule):
         
         # torch.cuda.synchronize()
         # t_decoder_latent = time.time() - t0
-        
         # torch.cuda.synchronize()
         # t_inf = time.time() - t0
 
+        # # Uncomment to calculate inference times
         # if batch_idx > 0:
         #     self.inference_times.append(t_inf)
         #     avg_t_inf = torch.tensor(self.inference_times).mean()

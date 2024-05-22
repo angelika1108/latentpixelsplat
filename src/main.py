@@ -149,10 +149,8 @@ def train(cfg_dict: DictConfig):
         decoder_latent=decoder_latent,
     )
     
-    # breakpoint()
-    # len(model_wrapper.encoder.state_dict().keys())  # 632
-    # len(model_wrapper.decoder.state_dict().keys())  # 0
-    # len(model_wrapper.decoder_latent.state_dict().keys()) # 48
+
+    # # Uncomment for saving the (randomly initialised) encoder and decoder_latent state_dict
     # torch.save(model_wrapper.encoder.state_dict(), 'encoder_init.pth')
     # torch.save(model_wrapper.decoder_latent.state_dict(), 'decoder_latent_init.pth')
 
@@ -198,8 +196,6 @@ def train(cfg_dict: DictConfig):
 
     if cfg.freeze_latent and cfg.decoder_latent_type is not None:
         print('==> Freeze latent encoder and decoder')
-        # model_wrapper.decoder_latent.state_dict().keys()
-        # model_wrapper.decoder_latent.state_dict()['quantize.embedding.weight'].requires_grad
         for param in model_wrapper.encoder.encoder_latent.parameters():
             param.requires_grad = False
         for param in model_wrapper.decoder_latent.parameters():
