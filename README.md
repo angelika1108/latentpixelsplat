@@ -1,8 +1,12 @@
 # LatentPixelSplat
 
-The **LatentPixelSplat** project is based on **[pixelSplat:](https://github.com/dcharatan/pixelsplat) 3D Gaussian Splats from Image Pairs for Scalable Generalizable 3D Reconstruction** by David Charatan, Sizhe Li, Andrea Tagliasacchi, and Vincent Sitzmann.
+This project is based on **[pixelSplat:](https://github.com/dcharatan/pixelsplat) 3D Gaussian Splats from Image Pairs for Scalable Generalizable 3D Reconstruction** by David Charatan, Sizhe Li, Andrea Tagliasacchi, and Vincent Sitzmann.
 
-For the necessary library installations and information about datasets, training, evaluation, etc. please visit the [pixelSplat GitHub page](https://github.com/dcharatan/pixelsplat).
+The goal is to integrate a tiny VAE-based encoder-decoder in the pixelSplat architecture. The input of the model are two context images and multiple target viewing directions. The out of the model are target images that correspond to the input viewing directions.
+
+The latent encoder takes the 256x256 context images as input and outputs 64x64 latent feature maps. These feature maps are added to the output feature maps of PixelSplat's encoder. Consequently, Gaussians are predicted in a smaller latent space and then they are projected into 64x64 image frames by rasterization, which are the target images. The latent decoder then upsamples the target images to have spatial dimensions 256x256.
+
+For the necessary library installations and information about datasets, training, evaluation, etc. please visit the [GitHub page](https://github.com/dcharatan/pixelsplat) of pixelSplat.
 
 
 ## BibTeX
