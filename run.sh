@@ -1,8 +1,8 @@
 
-# Test PixelSplat on ACID with pre-trained weights
-python3 -m src.main +experiment=acid mode=test exp_name='exp' hydra.run.dir='outputs/exp' dataset/view_sampler=evaluation checkpointing.load=pretrained_models/acid.ckpt dataset.view_sampler.index_path=assets/evaluation_index_acid.json model.encoder.epipolar_transformer.upscale=4 test.output_path=outputs/test/acid_pretrained_pixelsplat
+### Test
 
 ### Breaking down the command:
+### Possible options
 # python3 -m src.main 
 # +experiment=acid 
 # mode=test 
@@ -40,14 +40,15 @@ python3 -m src.main +experiment=acid mode=test exp_name='acid_tiny_lat_ed_80k' h
 python3 -m src.main +experiment=acid mode=test exp_name='acid_tiny_rnd_80k' hydra.run.dir='outputs/acid_tiny_rnd_80k' dataset/view_sampler=evaluation dataset.view_sampler.index_path=assets/evaluation_index_acid.json test.output_path=outputs/acid_tiny_rnd_80k/test checkpointing.load=outputs/acid_tiny_rnd_80k/checkpoints/epoch7_step80000.ckpt
 
 
+### Train
 
+# trainer.val_check_interval=30 optimizer.warm_up_steps=1000 options are only added for debug!
+# These are not added when training for real.
 
-# Train
 # trainer.val_check_interval=30
-# trainer.log_every_n_steps=30 ####################
 # optimizer.warm_up_steps=1000
-# model.encoder.epipolar_transformer.upscale=4  ## not used
 
+# model.encoder.epipolar_transformer.upscale=4  ## not used
 # wandb.mode=disabled, offline
 # checkpointing.load=pretrained_models/acid_latent_d3_f4_noattn.ckpt
 # checkpointing.every_n_train_steps=2000
@@ -122,7 +123,7 @@ python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' 
 
 
 
-# Metrics
+### Metrics
 
 # output_metrics_path=outputs/test/tiny_rnd_bs4_20000/acid/evaluation_metrics.json 
 # evaluation.methods.0.path=outputs/test/tiny_rnd_bs4_20000/acid
