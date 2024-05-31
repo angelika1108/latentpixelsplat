@@ -42,8 +42,8 @@ python3 -m src.main +experiment=acid mode=test exp_name='acid_tiny_rnd_80k' hydr
 
 ### Train
 
-# trainer.val_check_interval=30 optimizer.warm_up_steps=1000 options are only added for debug!
-# These are not added when training for real.
+# !!! trainer.val_check_interval=30 optimizer.warm_up_steps=1000 options are only added for debug !!!
+# !!! These are not added when training for real. !!!
 
 # trainer.val_check_interval=30
 # optimizer.warm_up_steps=1000
@@ -118,6 +118,9 @@ python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' 
 
 # Train no latent enc
 python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' data_loader.train.batch_size=1 trainer.val_check_interval=30 optimizer.warm_up_steps=1000 checkpointing.every_n_train_steps=2000 model.encoder.encoder_latent_type=null model.encoder.epipolar_transformer.upscale=4 decoder_latent_dim=3 model.encoder.d_latent=3 model.decoder.d_latent=3
+
+# Train no latent enc no upsample 4
+python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' data_loader.train.batch_size=1 trainer.val_check_interval=30 optimizer.warm_up_steps=1000 checkpointing.every_n_train_steps=2000 model.encoder.encoder_latent_type=null model.encoder.epipolar_transformer.upscale=0 decoder_latent_dim=3 model.encoder.d_latent=3 model.decoder.d_latent=3
 
 
 
