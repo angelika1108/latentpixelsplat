@@ -53,6 +53,7 @@ class RootCfg:
     seed: int
     decoder_latent_type: str | None
     decoder_latent_dim: int | None
+    dec_conv_dhidden: int | None
     freeze_latent: bool
     load_pretrained_encoder: str | None
     load_pretrained_latent_decoder: bool

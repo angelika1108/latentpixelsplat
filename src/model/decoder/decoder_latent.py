@@ -108,6 +108,23 @@ class DecoderLatentTinyWithNorm(nn.Module):
         return features
 
 
+class DecoderConv(nn.Module):
+    def __init__(self, d_in=4, d_out=3, d_hidden=4) -> None:
+        super().__init__()
+        assert d_out == 3
+
+        self.layers = nn.Sequential(nn.Conv2d(d_in, d_hidden, 3, padding=1, bias=False), 
+                                    nn.BatchNorm2d(d_hidden), 
+                                    nn.ReLU(inplace=True),
+                                    nn.Conv2d(d_hidden, d_out, 3, padding=1, bias=False), 
+        ) 
+    
+    def forward(self, x):
+        features = self.layers(x)
+        features = features.clamp(0, 1)
+        return features
+
+
 
 # From https://github.com/CompVis/latent-diffusion
 class DecoderLatent(nn.Module):

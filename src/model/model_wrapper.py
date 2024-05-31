@@ -41,7 +41,7 @@ from ..visualization.validation_in_3d import render_cameras, render_projections
 from .decoder.decoder import Decoder, DepthRenderingMode
 from .encoder import Encoder
 from .encoder.visualization.encoder_visualizer import EncoderVisualizer
-from .decoder.decoder_latent import DecoderLatent, DecoderLatentTiny, DecoderLatentTinyWithNorm
+from .decoder.decoder_latent import DecoderLatent, DecoderLatentTiny, DecoderLatentTinyWithNorm, DecoderConv
 
 
 @dataclass
@@ -112,7 +112,9 @@ class ModelWrapper(LightningModule):
         self.data_shim = get_data_shim(self.encoder)
         self.losses = nn.ModuleList(losses)
 
-        self.downsample = self.decoder_latent.upsample if self.decoder_latent is not None else None
+        if isinstance(self.decoder_latent, (DecoderLatent, DecoderLatentTiny, DecoderLatentTinyWithNorm)):
+            self.downsample = self.decoder_latent.upsample
+      
         self.d_latent = self.decoder.d_latent if self.encoder.encoder_latent_type is not None else 3
         
         # This is used for testing.
@@ -133,7 +135,7 @@ class ModelWrapper(LightningModule):
         else:
             raise ValueError(f"Invalid d_latent: {self.d_latent}")
 
-        if self.decoder_latent is not None:
+        if isinstance(self.decoder_latent, (DecoderLatent, DecoderLatentTiny, DecoderLatentTinyWithNorm)):
             h_new, w_new = h // self.downsample, w // self.downsample    # downsample
         else:
             h_new, w_new = h, w
@@ -169,11 +171,8 @@ class ModelWrapper(LightningModule):
             output.color = (output.color - output.color.min()) / (output.color.max() - output.color.min())
             output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
 
-        elif isinstance(self.decoder_latent, DecoderLatentTiny):    # Input channels: 4, output channels: 3
-            output.color = self.decoder_latent.forward(output.color)
-            output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
-        
-        elif isinstance(self.decoder_latent, DecoderLatentTinyWithNorm):    # Input channels: 4, output channels: 3
+        elif isinstance(self.decoder_latent, (DecoderLatentTiny, DecoderLatentTinyWithNorm, DecoderConv)):
+            # Input channels: d_latent, output channels: 3
             output.color = self.decoder_latent.forward(output.color)
             output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
         
@@ -247,7 +246,7 @@ class ModelWrapper(LightningModule):
         # torch.cuda.synchronize()
         # t0 = time.time()
 
-        if self.decoder_latent is not None:
+        if isinstance(self.decoder_latent, (DecoderLatent, DecoderLatentTiny, DecoderLatentTinyWithNorm)):
             h_new, w_new = h // self.downsample, w // self.downsample    # downsample
         else:
             h_new, w_new = h, w
@@ -288,14 +287,11 @@ class ModelWrapper(LightningModule):
             output.color = (output.color - output.color.min()) / (output.color.max() - output.color.min())
             output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
 
-        elif isinstance(self.decoder_latent, DecoderLatentTiny):    # Input channels: 4, output channels: 3
+        elif isinstance(self.decoder_latent, (DecoderLatentTiny, DecoderLatentTinyWithNorm, DecoderConv)):
+            # Input channels: d_latent, output channels: 3
             output.color = self.decoder_latent.forward(output.color)
             output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
-        
-        elif isinstance(self.decoder_latent, DecoderLatentTinyWithNorm):    # Input channels: 4, output channels: 3
-            output.color = self.decoder_latent.forward(output.color)
-            output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
-        
+
         else: # No latent decoder
             output.color = rearrange(output.color, "(b v) c h w -> b v c h w", b=b, v=v)
         
@@ -359,7 +355,7 @@ class ModelWrapper(LightningModule):
         else:
             raise ValueError(f"Invalid d_latent: {self.d_latent}")
 
-        if self.decoder_latent is not None:
+        if isinstance(self.decoder_latent, (DecoderLatent, DecoderLatentTiny, DecoderLatentTinyWithNorm)):
             h_new, w_new = h // self.downsample, w // self.downsample    # downsample
         else:
             h_new, w_new = h, w
@@ -393,11 +389,8 @@ class ModelWrapper(LightningModule):
             output_probabilistic.color = (output_probabilistic.color - output_probabilistic.color.min()) / (output_probabilistic.color.max() - output_probabilistic.color.min())
             output_probabilistic.color = rearrange(output_probabilistic.color, "(b v) c h w -> b v c h w", b=b, v=v)
 
-        elif isinstance(self.decoder_latent, DecoderLatentTiny):    # Input channels: 4, output channels: 3
-            output_probabilistic.color = self.decoder_latent.forward(output_probabilistic.color)
-            output_probabilistic.color = rearrange(output_probabilistic.color, "(b v) c h w -> b v c h w", b=b, v=v)
-        
-        elif isinstance(self.decoder_latent, DecoderLatentTinyWithNorm):    # Input channels: 4, output channels: 3
+        elif isinstance(self.decoder_latent, (DecoderLatentTiny, DecoderLatentTinyWithNorm, DecoderConv)):
+            # Input channels: 4, output channels: 3
             output_probabilistic.color = self.decoder_latent.forward(output_probabilistic.color)
             output_probabilistic.color = rearrange(output_probabilistic.color, "(b v) c h w -> b v c h w", b=b, v=v)
         
@@ -451,11 +444,8 @@ class ModelWrapper(LightningModule):
             output_deterministic.color = (output_deterministic.color - output_deterministic.color.min()) / (output_deterministic.color.max() - output_deterministic.color.min())
             output_deterministic.color = rearrange(output_deterministic.color, "(b v) c h w -> b v c h w", b=b, v=v)
 
-        elif isinstance(self.decoder_latent, DecoderLatentTiny):    # Input channels: 4, output channels: 3
-            output_deterministic.color = self.decoder_latent.forward(output_deterministic.color)
-            output_deterministic.color = rearrange(output_deterministic.color, "(b v) c h w -> b v c h w", b=b, v=v)
-        
-        elif isinstance(self.decoder_latent, DecoderLatentTinyWithNorm):    # Input channels: 4, output channels: 3
+        elif isinstance(self.decoder_latent, (DecoderLatentTiny, DecoderLatentTinyWithNorm, DecoderConv)):
+            # Input channels: 4, output channels: 3
             output_deterministic.color = self.decoder_latent.forward(output_deterministic.color)
             output_deterministic.color = rearrange(output_deterministic.color, "(b v) c h w -> b v c h w", b=b, v=v)
         

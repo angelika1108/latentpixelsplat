@@ -123,6 +123,9 @@ python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' 
 python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' data_loader.train.batch_size=1 trainer.val_check_interval=30 optimizer.warm_up_steps=1000 checkpointing.every_n_train_steps=2000 model.encoder.encoder_latent_type=null model.encoder.epipolar_transformer.upscale=0 decoder_latent_dim=3 model.encoder.d_latent=3 model.decoder.d_latent=3
 
 
+# Train decoder conv (+tiny latent enc)
+python3 -m src.main +experiment=acid exp_name='exp' hydra.run.dir='outputs/exp' data_loader.train.batch_size=1 trainer.val_check_interval=30 optimizer.warm_up_steps=1000 checkpointing.every_n_train_steps=2000 decoder_latent_type=conv model.encoder.encoder_latent_type=tiny dec_conv_dhidden=4
+
 
 
 
